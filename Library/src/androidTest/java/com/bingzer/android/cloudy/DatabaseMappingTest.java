@@ -39,7 +39,7 @@ public class DatabaseMappingTest extends AndroidTestCase {
     ////////////////////////////////////////////////////////////////////////////////
 
     public void test_getInfos(){
-        assertEquals(2, mapping.getInfoList());
+        assertEquals(2, mapping.getInfoList().size());
     }
 
     public void test_getInfos_getName(){
@@ -53,10 +53,10 @@ public class DatabaseMappingTest extends AndroidTestCase {
     }
 
     public void test_getInfos_getFactory(){
-        assertEquals("db1_table1", mapping.getInfoList().get(0).getFactory().createEntity("db1_table1"));
-        assertEquals("db1_table2", mapping.getInfoList().get(0).getFactory().createEntity("db1_table2"));
+        assertEquals("db1_table1", mapping.getInfoList().get(0).getFactory().createEntity("db1_table1").getTableName());
+        assertEquals("db1_table2", mapping.getInfoList().get(0).getFactory().createEntity("db1_table2").getTableName());
 
-        assertEquals("db2_table1", mapping.getInfoList().get(1).getFactory().createEntity("db2_table1"));
+        assertEquals("db2_table1", mapping.getInfoList().get(1).getFactory().createEntity("db2_table1").getTableName());
     }
 
     ////////////////////////////////////////////////////////////////////////////////

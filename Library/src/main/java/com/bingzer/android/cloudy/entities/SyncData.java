@@ -1,7 +1,6 @@
 package com.bingzer.android.cloudy.entities;
 
 import com.bingzer.android.cloudy.contracts.NoSync;
-import com.bingzer.android.cloudy.sync.providers.db.SyncEnvironment;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.ITable;
 
