@@ -1,0 +1,30 @@
+project.ext.set("archivesBaseName", "cloudy");
+
+apply plugin: 'android-library'
+
+android {
+    compileSdkVersion Integer.parseInt(project.VERSION_SDK)
+    buildToolsVersion project.VERSION_TOOLS
+
+    defaultConfig {
+        minSdkVersion Integer.parseInt(project.VERSION_SDK_MIN)
+        targetSdkVersion Integer.parseInt(project.VERSION_SDK_TARGET)
+        versionCode Integer.parseInt(project.VERSION_CODE)
+        versionName project.VERSION_NAME
+    }
+}
+
+repositories {
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots/"
+    }
+}
+
+dependencies {
+    compile (group:'com.bingzer.android.dbv',    name: 'dbquery',         version:'2.0.0')
+    compile (group:'com.bingzer.android.driven', name: 'driven',          version:'0.2.2-SNAPSHOT', changing: true)
+    compile (group:'com.bingzer.android.driven', name: 'driven-gdrive',   version:'0.2.2-SNAPSHOT', changing: true)
+    compile (group:'com.bingzer.android.driven', name: 'driven-dropbox',  version:'0.2.2-SNAPSHOT', changing: true)
+}
+
+apply from: 'https://raw.github.com/chrisbanes/gradle-mvn-push/master/gradle-mvn-push.gradle'
