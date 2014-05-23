@@ -1,9 +1,11 @@
 package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.DirectoryTree;
+import com.bingzer.android.driven.DrivenFile;
 import com.bingzer.android.driven.api.Path;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 class DirectoryTreeImpl implements DirectoryTree {
@@ -12,8 +14,9 @@ class DirectoryTreeImpl implements DirectoryTree {
     private DirectoryTreeImpl parent;
     private String name;
     private String local;
-    private String[] extensions = { FILTER_ALL };
-    private List<DirectoryTreeImpl> nodes = new ArrayList<DirectoryTreeImpl>();
+    private List<String> filters = new ArrayList<String>(Arrays.asList(FILTER_ALL));
+    private List<DirectoryTree> nodes = new ArrayList<DirectoryTree>();
+    private DrivenFile drivenFile;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,24 +37,8 @@ class DirectoryTreeImpl implements DirectoryTree {
         return manager;
     }
 
-    protected String getName() {
-        return name;
-    }
-
-    protected String getLocal() {
-        return local;
-    }
-
-    protected List<DirectoryTreeImpl> getNodes(){
-        return nodes;
-    }
-
     protected DirectoryTreeImpl getParent() {
         return parent;
-    }
-
-    protected String[] getExtensions(){
-        return extensions;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +55,7 @@ class DirectoryTreeImpl implements DirectoryTree {
 
     @Override
     public DirectoryTree getNode(String remoteName) {
-        for (DirectoryTreeImpl node : nodes){
+        for (DirectoryTree node : nodes){
             if(node.getName().equalsIgnoreCase(remoteName)){
                 return node;
             }
@@ -78,12 +65,41 @@ class DirectoryTreeImpl implements DirectoryTree {
     }
 
     @Override
+    public List<DirectoryTree> getNodes(){
+        return nodes;
+    }
+
+    @Override
     public void filter(String... extensions) {
-        this.extensions = extensions;
+        filters.clear();
+        filters.addAll(Arrays.asList(extensions));
     }
 
     @Override
     public String toString() {
         return Path.combine(parent != null ? parent.toString() : "", name);
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public List<String> getFilters(){
+        return filters;
+    }
+
+    public DrivenFile getDrivenFile() {
+        return drivenFile;
+    }
+
+    public void setDrivenFile(DrivenFile drivenFile) {
+        this.drivenFile = drivenFile;
+    }
+
+    @Override
+    public String getLocal() {
+        return local;
     }
 }

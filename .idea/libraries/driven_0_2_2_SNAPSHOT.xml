@@ -5,6 +5,30 @@
       <root url="file://$PROJECT_DIR$/Library/build/exploded-aar/com.bingzer.android.driven/driven/0.2.2-SNAPSHOT/res" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/src/main/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/build/source/r/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/build/source/r/release" />
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/build/source/buildConfig/test/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/build/source/buildConfig/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Sample/build/source/buildConfig/release" />
+      <root url="file://$PROJECT_DIR$/../Driven/Library/src/main/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Library/src/androidTest/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Library/build/source/buildConfig/test/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Library/build/source/buildConfig/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Library/build/source/buildConfig/release" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/src/main/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/src/androidTest/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/build/source/buildConfig/test/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/build/source/buildConfig/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/build/source/buildConfig/release" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/Dropbox/build/classes/test/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/src/main/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/src/androidTest/java" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/build/source/buildConfig/test/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/build/source/buildConfig/debug" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/build/source/buildConfig/release" />
+      <root url="file://$PROJECT_DIR$/../Driven/Providers/GoogleDrive/build/classes/test/debug" />
+    </SOURCES>
   </library>
 </component>

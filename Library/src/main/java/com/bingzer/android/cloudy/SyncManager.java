@@ -4,6 +4,8 @@ import com.bingzer.android.cloudy.contracts.DatabaseMapping;
 import com.bingzer.android.cloudy.contracts.DirectoryTree;
 import com.bingzer.android.cloudy.contracts.EntityFactory;
 import com.bingzer.android.cloudy.contracts.Remote;
+import com.bingzer.android.cloudy.contracts.SyncProvider;
+import com.bingzer.android.cloudy.dir.DirectorySyncProvider;
 import com.bingzer.android.driven.Driven;
 import com.bingzer.android.driven.api.ResultImpl;
 import com.bingzer.android.driven.contracts.Delegate;
@@ -52,6 +54,7 @@ public class SyncManager implements Remote {
     public Result<SyncException> sync() throws SyncException {
         ResultImpl<SyncException> result = new ResultImpl<SyncException>(false);
         try{
+
 
             result.setSuccess(true);
         }

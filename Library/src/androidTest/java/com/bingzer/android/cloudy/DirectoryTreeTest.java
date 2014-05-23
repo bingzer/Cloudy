@@ -28,10 +28,10 @@ public class DirectoryTreeTest extends AndroidTestCase {
 
     public void test_getFilters(){
         DirectoryTreeImpl root = (DirectoryTreeImpl) manager.getRoot();
-        assertTrue(Arrays.equals(root.getExtensions(), new String[]{"*.exe", "*.txt"}));
+        assertTrue(Arrays.equals(root.getFilters().toArray(), new String[]{"*.exe", "*.txt"}));
 
         DirectoryTreeImpl folder10 = (DirectoryTreeImpl) root.getNode("folder10");
-        assertTrue(Arrays.equals(folder10.getExtensions(), new String[]{ DirectoryTree.FILTER_ALL }));
+        assertTrue(Arrays.equals(folder10.getFilters().toArray(), new String[]{ DirectoryTree.FILTER_ALL }));
     }
 
     public void test_addNodeExists(){
@@ -62,9 +62,9 @@ public class DirectoryTreeTest extends AndroidTestCase {
     public void test_getParent(){
         DirectoryTreeImpl root = (DirectoryTreeImpl) manager.getRoot();
 
-        assertEquals("/app", root.getNodes().get(0).getParent().toString());
-        assertEquals("/app", root.getNodes().get(1).getParent().toString());
-        assertEquals("/app", root.getNodes().get(2).getParent().toString());
+        assertEquals("/app", ((DirectoryTreeImpl) root.getNodes().get(0)).getParent().toString());
+        assertEquals("/app", ((DirectoryTreeImpl) root.getNodes().get(1)).getParent().toString());
+        assertEquals("/app", ((DirectoryTreeImpl) root.getNodes().get(2)).getParent().toString());
     }
 
     public void test_nodes(){
