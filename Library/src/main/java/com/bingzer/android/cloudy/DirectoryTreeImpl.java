@@ -1,8 +1,8 @@
 package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.DirectoryTree;
-import com.bingzer.android.driven.DrivenFile;
-import com.bingzer.android.driven.api.Path;
+import com.bingzer.android.driven.RemoteFile;
+import com.bingzer.android.driven.utils.Path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +16,7 @@ class DirectoryTreeImpl implements DirectoryTree {
     private String local;
     private List<String> filters = new ArrayList<String>(Arrays.asList(FILTER_ALL));
     private List<DirectoryTree> nodes = new ArrayList<DirectoryTree>();
-    private DrivenFile drivenFile;
+    private RemoteFile remoteFile;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,12 +90,12 @@ class DirectoryTreeImpl implements DirectoryTree {
         return filters;
     }
 
-    public DrivenFile getDrivenFile() {
-        return drivenFile;
+    public RemoteFile getRemoteFile() {
+        return remoteFile;
     }
 
-    public void setDrivenFile(DrivenFile drivenFile) {
-        this.drivenFile = drivenFile;
+    public void setRemoteFile(RemoteFile remoteFile) {
+        this.remoteFile = remoteFile;
     }
 
     @Override

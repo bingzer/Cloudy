@@ -1,6 +1,6 @@
 package com.bingzer.android.cloudy.contracts;
 
-import com.bingzer.android.driven.DrivenFile;
+import com.bingzer.android.driven.RemoteFile;
 
 import java.util.List;
 
@@ -25,8 +25,8 @@ public interface DirectoryTree {
 
     List<String> getFilters();
 
-    void setDrivenFile(DrivenFile drivenFile);
+    void setRemoteFile(RemoteFile remoteFile);
 
-    DrivenFile getDrivenFile();
+    RemoteFile getRemoteFile();
 
 }

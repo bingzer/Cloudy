@@ -4,19 +4,20 @@ import android.webkit.MimeTypeMap;
 
 import com.bingzer.android.cloudy.contracts.DirectoryTree;
 import com.bingzer.android.cloudy.contracts.SyncProvider;
-import com.bingzer.android.driven.Driven;
-import com.bingzer.android.driven.DrivenFile;
+import com.bingzer.android.driven.LocalFile;
+import com.bingzer.android.driven.RemoteFile;
+import com.bingzer.android.driven.StorageProvider;
 
 import java.io.File;
 import java.io.FilenameFilter;
 
 public class DirectorySyncProvider implements SyncProvider {
 
-    private Driven driven;
+    private StorageProvider provider;
     private DirectoryTree root;
 
-    public DirectorySyncProvider(DirectoryTree root, Driven driven){
-        this.driven = driven;
+    public DirectorySyncProvider(DirectoryTree root, StorageProvider provider){
+        this.provider = provider;
         this.root = root;
     }
 
@@ -26,11 +27,11 @@ public class DirectorySyncProvider implements SyncProvider {
     }
 
     private void ensureNodeExists(final DirectoryTree node) {
-        // assign the driven file
-        DrivenFile drivenFile = driven.get(node.getDrivenFile(), node.getName());
-        if (drivenFile == null)
-            drivenFile = driven.create(node.getName());
-        node.setDrivenFile(drivenFile);
+        // assign the provider file
+        RemoteFile remoteFile = provider.get(node.getRemoteFile(), node.getName());
+        if (remoteFile == null)
+            remoteFile = provider.create(node.getName());
+        node.setRemoteFile(remoteFile);
 
         // get all the files according to the filter
         for(File f : new File(node.getLocal()).listFiles(new FilenameFilter() {
@@ -44,7 +45,8 @@ public class DirectorySyncProvider implements SyncProvider {
                 return false;
             }
         })){
-            drivenFile.upload(MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.getName()), f);
+            LocalFile localFile = new LocalFile(MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.getName()), f);
+            remoteFile.upload(localFile);
         }
 
         // do the same for each children

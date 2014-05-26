@@ -4,26 +4,23 @@ import com.bingzer.android.cloudy.contracts.DatabaseMapping;
 import com.bingzer.android.cloudy.contracts.DirectoryTree;
 import com.bingzer.android.cloudy.contracts.EntityFactory;
 import com.bingzer.android.cloudy.contracts.Remote;
-import com.bingzer.android.cloudy.contracts.SyncProvider;
-import com.bingzer.android.cloudy.dir.DirectorySyncProvider;
-import com.bingzer.android.driven.Driven;
-import com.bingzer.android.driven.api.ResultImpl;
+import com.bingzer.android.driven.Result;
+import com.bingzer.android.driven.StorageProvider;
 import com.bingzer.android.driven.contracts.Delegate;
-import com.bingzer.android.driven.contracts.Result;
 import com.bingzer.android.driven.contracts.Task;
 
 import static com.bingzer.android.driven.utils.AsyncUtils.doAsync;
 
 public class SyncManager implements Remote {
 
-    private Driven driven;
+    private StorageProvider provider;
     private DirectoryTree root;
     private DatabaseMapping dbMapping;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SyncManager(Driven driven){
-        this.driven = driven;
+    public SyncManager(StorageProvider provider){
+        this.provider = provider;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -41,8 +38,8 @@ public class SyncManager implements Remote {
         return dbMapping;
     }
 
-    public Driven getDriven() {
-        return driven;
+    public StorageProvider getProvider() {
+        return provider;
     }
 
     public DirectoryTree getRoot() {
@@ -52,7 +49,7 @@ public class SyncManager implements Remote {
     //////////////////////////////////////////////////////////////////////////////////////////
 
     public Result<SyncException> sync() throws SyncException {
-        ResultImpl<SyncException> result = new ResultImpl<SyncException>(false);
+        Result<SyncException> result = new Result<SyncException>(false);
         try{
 
 
@@ -64,8 +61,8 @@ public class SyncManager implements Remote {
         return result;
     }
 
-    public void syncAsync(Task<Result<SyncException>> result){
-        doAsync(result, new Delegate<Result<SyncException>>() {
+    public void syncAsync(Task<Result<SyncException>> task){
+        doAsync(task, new Delegate<Result<SyncException>>() {
             @Override
             public Result<SyncException> invoke() {
                 return sync();
