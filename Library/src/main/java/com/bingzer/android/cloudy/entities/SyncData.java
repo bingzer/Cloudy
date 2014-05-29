@@ -1,17 +1,18 @@
 package com.bingzer.android.cloudy.entities;
 
-import com.bingzer.android.cloudy.contracts.NoSync;
+import com.bingzer.android.cloudy.contracts.IDataEntity;
+import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.ITable;
 
 import java.util.Date;
 
-import static com.bingzer.android.cloudy.utils.Converter.parseBoolean;
-import static com.bingzer.android.cloudy.utils.Converter.parseDouble;
-import static com.bingzer.android.cloudy.utils.Converter.parseInt;
-import static com.bingzer.android.cloudy.utils.Converter.parseLong;
+import static com.bingzer.android.Parser.parseBoolean;
+import static com.bingzer.android.Parser.parseDouble;
+import static com.bingzer.android.Parser.parseInt;
+import static com.bingzer.android.Parser.parseLong;
 
-final class SyncData extends BaseEntity implements NoSync {
+final class SyncData extends BaseEntity implements IDataEntity {
 
     public static final String TABLE_NAME = "SyncData";
 
@@ -29,7 +30,7 @@ final class SyncData extends BaseEntity implements NoSync {
         this(null);
     }
 
-    SyncData(SyncEnvironment environment){
+    SyncData(IEnvironment environment){
         super(environment);
     }
 
@@ -113,7 +114,7 @@ final class SyncData extends BaseEntity implements NoSync {
 
     public static SyncData getData(String name){
         final SyncData syncData = new SyncData();
-        ITable table = syncData.environment.getDatabase().get(TABLE_NAME);
+        ITable table = syncData.getEnvironment().getDatabase().get(TABLE_NAME);
 
         if(table.has("Name = ?", name)){
             table.select("Name = ?", name).query(syncData);

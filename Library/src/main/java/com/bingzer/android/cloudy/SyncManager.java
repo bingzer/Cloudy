@@ -1,75 +1,82 @@
 package com.bingzer.android.cloudy;
 
-import com.bingzer.android.cloudy.contracts.DatabaseMapping;
-import com.bingzer.android.cloudy.contracts.DirectoryTree;
-import com.bingzer.android.cloudy.contracts.EntityFactory;
-import com.bingzer.android.cloudy.contracts.Remote;
-import com.bingzer.android.driven.Result;
+import android.content.Context;
+
+import com.bingzer.android.cloudy.contracts.IEntityFactory;
+import com.bingzer.android.cloudy.contracts.IEnvironment;
+import com.bingzer.android.cloudy.contracts.ISyncManager;
+import com.bingzer.android.cloudy.contracts.ISyncProvider;
+import com.bingzer.android.cloudy.entities.Environment;
+import com.bingzer.android.dbv.DbQuery;
+import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.dbv.SQLiteBuilder;
+import com.bingzer.android.driven.LocalFile;
+import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
-import com.bingzer.android.driven.contracts.Delegate;
-import com.bingzer.android.driven.contracts.Task;
 
-import static com.bingzer.android.driven.utils.AsyncUtils.doAsync;
+import java.io.File;
 
-public class SyncManager implements Remote {
+public class SyncManager implements ISyncManager {
 
-    private StorageProvider provider;
-    private DirectoryTree root;
+    private StorageProvider storageProvider;
+    private RemoteFile root;
     private DatabaseMapping dbMapping;
+    private Context context;
+    private ISyncProvider syncProvider;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SyncManager(StorageProvider provider){
-        this.provider = provider;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    @Override
-    public DirectoryTree mapRoot(String remoteName, String local) {
-        return (root = new DirectoryTreeImpl(this, remoteName, local));
+    public SyncManager(Context context, StorageProvider storageProvider){
+        this.context = context.getApplicationContext();
+        this.storageProvider = storageProvider;
     }
 
     @Override
-    public DatabaseMapping mapDatabase(String remoteName, String local, EntityFactory factory) {
-        if(dbMapping == null)
-            dbMapping = new DatabaseMappingImpl();
-        ((DatabaseMappingImpl)dbMapping).addInfo(new DatabaseMappingImpl.Info(remoteName, local, factory));
-        return dbMapping;
+    public void syncRoot(RemoteFile root) {
+        if(!root.isDirectory()) throw new SyncException("root must be a directory");
+        this.root = root;
     }
 
-    public StorageProvider getProvider() {
-        return provider;
+    @Override
+    public void syncDatabase(IDatabase local, RemoteFile dbRemoteFile, IEntityFactory factory) {
+        dbMapping = new DatabaseMapping(local, dbRemoteFile, factory);
     }
 
-    public DirectoryTree getRoot() {
-        return root;
+    @Override
+    public void sync() {
+        IEnvironment local = Environment.getLocalEnvironment();
+        IEnvironment remote = new Environment(getRemoteDb(), local.getEntityFactory());
+        syncProvider = new SyncProvider(local, remote);
+        syncProvider.sync(1);
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////////
+    private IDatabase getRemoteDb(){
+        IDatabase localDb = Environment.getLocalEnvironment().getDatabase();
 
-    public Result<SyncException> sync() throws SyncException {
-        Result<SyncException> result = new Result<SyncException>(false);
-        try{
+        LocalFile dbLocalFile = downloadRemoteDbToLocal();
+        IDatabase db = DbQuery.getDatabase(localDb.getName());
+        db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), new SQLiteBuilder.WithoutModeling(context));
 
-
-            result.setSuccess(true);
-        }
-        catch (Exception e){
-            result.setException(new SyncException(e));
-        }
-        return result;
+        return db;
     }
 
-    public void syncAsync(Task<Result<SyncException>> task){
-        doAsync(task, new Delegate<Result<SyncException>>() {
-            @Override
-            public Result<SyncException> invoke() {
-                return sync();
-            }
-        });
+    private LocalFile downloadRemoteDbToLocal(){
+        LocalFile localFile = new LocalFile(new File(context.getCacheDir(), dbMapping.dbRemoteFile.getName()));
+        dbMapping.dbRemoteFile.download(localFile);
+        return localFile;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
+
+    private class DatabaseMapping {
+        private IDatabase local;
+        private RemoteFile dbRemoteFile;
+        private IEntityFactory factory;
+        private DatabaseMapping(IDatabase local, RemoteFile dbRemoteFile, IEntityFactory factory){
+            this.local = local;
+            this.dbRemoteFile = dbRemoteFile;
+            this.factory = factory;
+        }
+    }
 
 }

@@ -3,22 +3,18 @@ package com.bingzer.android.cloudy.contracts;
 import android.database.Cursor;
 
 import com.bingzer.android.dbv.IEntity;
-import com.bingzer.android.dbv.ITable;
 
-/**
- * Created by Ricky on 5/20/2014.
- */
+
 public interface IBaseEntity extends IEntity {
-    void setId(long id);
 
     @Override
     long getId();
 
+    void setId(long id);
+
     long getSyncId();
 
     void setSyncId(long syncId);
-
-    String getTableName();
 
     void save();
 
@@ -36,6 +32,10 @@ public interface IBaseEntity extends IEntity {
 
     @Override
     void map(Mapper mapper);
+
+    //////////////////////////////////////////////////////////////
+
+    String getTableName();
 
     IEnvironment getEnvironment();
 }

@@ -2,27 +2,31 @@ package com.bingzer.android.cloudy.entities;
 
 import android.database.Cursor;
 
-import com.bingzer.android.cloudy.Environment;
+import com.bingzer.android.Randomite;
 import com.bingzer.android.cloudy.contracts.IBaseEntity;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
-import com.bingzer.android.cloudy.utils.UniqueId;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.ITable;
 import com.bingzer.android.dbv.utils.EntityUtils;
 
-abstract class BaseEntity implements IBaseEntity {
+import java.io.File;
+
+public abstract class BaseEntity implements IBaseEntity {
 
     private long id = -1;
     private long syncId = -1;
-    protected IEnvironment environment;
+    private IEnvironment environment;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
     public BaseEntity(){
-        this(Environment.getDefault());
+        this(null);
     }
 
-    BaseEntity(IEnvironment environment){
+    public BaseEntity(IEnvironment environment){
+        if(environment == null){
+            environment = Environment.getLocalEnvironment();
+        }
         this.environment = environment;
     }
 
@@ -50,8 +54,6 @@ abstract class BaseEntity implements IBaseEntity {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    /////////////////////////////////////////////////////////////////////////////////////////
-
     @Override
     public final void save(){
         if(id > 0) {
@@ -65,7 +67,7 @@ abstract class BaseEntity implements IBaseEntity {
         else {
             // INSERTED
             onPreInserted();
-            syncId = UniqueId.generateUniqueId();
+            syncId = Randomite.uniqueId();
             id = environment.getDatabase().get(getTableName()).insert(this).query();
 
             SyncHistory.insert(this);
@@ -137,6 +139,10 @@ abstract class BaseEntity implements IBaseEntity {
         // placeHolder
     }
 
+    protected File[] getLocalFiles(){
+        return null;
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
@@ -144,8 +150,8 @@ abstract class BaseEntity implements IBaseEntity {
         return environment;
     }
 
-    protected ITable getTable(){
-        return environment.getDatabase().get(getTableName());
+    public final boolean hasLocalFiles(){
+        return getLocalFiles() != null && getLocalFiles().length > 0;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

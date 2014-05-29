@@ -1,23 +1,22 @@
-package com.bingzer.android.cloudy.entities;
+package com.bingzer.android.cloudy;
 
 import android.database.Cursor;
 
-import com.bingzer.android.cloudy.contracts.EntityFactory;
 import com.bingzer.android.cloudy.contracts.IBaseEntity;
+import com.bingzer.android.cloudy.contracts.IDataHistory;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
-import com.bingzer.android.cloudy.contracts.SyncProvider;
-import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.ITable;
 import com.bingzer.android.dbv.queries.ISequence;
 
-public class DatabaseSyncProvider implements SyncProvider {
+class SyncProvider implements ISyncProvider {
 
-    private SyncEnvironment remote;
-    private SyncEnvironment local;
+    private IEnvironment remote;
+    private IEnvironment local;
 
-    public DatabaseSyncProvider(EntityFactory factory, IDatabase remoteDb, IDatabase localDb){
-        remote = new SyncEnvironment(remoteDb, factory);
-        local = new SyncEnvironment(localDb, factory);
+    public SyncProvider(IEnvironment local, IEnvironment remote){
+        this.local = local;
+        this.remote = remote;
     }
 
     @Override
@@ -37,8 +36,8 @@ public class DatabaseSyncProvider implements SyncProvider {
     }
 
     private void updateEnvironment(long timestamp, final IEnvironment source, final IEnvironment target){
-        final SyncHistory syncHistory = new SyncHistory(source);
-        source.getSyncHistory().select("Timestamp > ?", timestamp)
+        final IDataHistory syncHistory = target.createDataHistory();
+        source.getDatabase().get(IDataHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
 
@@ -50,14 +49,14 @@ public class DatabaseSyncProvider implements SyncProvider {
                         final IBaseEntity entity = target.getEntityFactory().createEntity(syncHistory.getName());
 
                         switch (syncHistory.getAction()) {
-                            case SyncHistory.INSERTED:
+                            case IDataHistory.INSERTED:
                                 localTable.select("SyncId = ?", syncHistory.getSyncId()).query(entity);
                                 remoteTable.insert(entity);
                                 break;
-                            case SyncHistory.DELETED:
+                            case IDataHistory.DELETED:
                                 remoteTable.delete("SyncID = ?", syncHistory.getSyncId());
                                 break;
-                            case SyncHistory.UPDATED:
+                            case IDataHistory.UPDATED:
                                 localTable.select("SyncId = ?", syncHistory.getSyncId()).query(entity);
                                 remoteTable.update(entity);
                                 break;
@@ -69,14 +68,14 @@ public class DatabaseSyncProvider implements SyncProvider {
     }
 
     private void updateSyncHistory(long timestamp, final IEnvironment source, final IEnvironment target){
-        final SyncHistory syncHistory = new SyncHistory(source);
-        source.getSyncHistory().select("Timestamp > ?", timestamp)
+        final IDataHistory syncHistory = target.createDataHistory();
+        source.getDatabase().get(IDataHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
                         syncHistory.load(cursor);
-                        target.getSyncHistory().insert(syncHistory);
+                        syncHistory.save();
 
                         return true;
                     }
@@ -84,7 +83,8 @@ public class DatabaseSyncProvider implements SyncProvider {
     }
 
     private void updateSyncData(long timestamp, final IEnvironment source){
-        source.getSyncData().update("Name = ?", SyncData.SYNC_DATE).val("Value", timestamp);
+        //final IDataEntity syncEntity = source.createDataEntity();
+        //source.getSyncData().update("Name = ?", SyncData.SYNC_DATE).val("Value", timestamp);
     }
 
 }

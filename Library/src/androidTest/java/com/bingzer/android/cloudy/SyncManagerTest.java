@@ -13,7 +13,7 @@ public class SyncManagerTest extends AndroidTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        manager = new SyncManager(null);
+        manager = new SyncManager(getContext(), null);
     }
 
 

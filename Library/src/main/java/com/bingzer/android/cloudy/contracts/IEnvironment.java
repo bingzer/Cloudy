@@ -5,11 +5,17 @@ import com.bingzer.android.dbv.ITable;
 
 public interface IEnvironment {
 
+    void setDatabase(IDatabase db);
+
     IDatabase getDatabase();
 
-    ITable getSyncHistory();
+    void setEntityFactory(IEntityFactory factory);
 
-    ITable getSyncData();
+    IEntityFactory getEntityFactory();
 
-    EntityFactory getEntityFactory();
+    /////////////////////////////////////////////////////////////////////////
+
+    IDataHistory createDataHistory();
+
+    IDataEntity createDataEntity();
 }

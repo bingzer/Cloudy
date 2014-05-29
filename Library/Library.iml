@@ -84,6 +84,7 @@
     <orderEntry type="library" exported="" name="driven-0.3.0-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="google-api-client-1.18.0-rc" level="project" />
     <orderEntry type="library" exported="" name="google-api-client-android-1.18.0-rc" level="project" />
+    <orderEntry type="library" exported="" name="butler-0.0.3-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="json_simple-1.1" level="project" />
     <orderEntry type="library" exported="" name="javax.inject-1" level="project" />
   </component>

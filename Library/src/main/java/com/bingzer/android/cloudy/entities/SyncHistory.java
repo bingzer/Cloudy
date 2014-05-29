@@ -1,17 +1,14 @@
 package com.bingzer.android.cloudy.entities;
 
 import com.bingzer.android.cloudy.contracts.IBaseEntity;
+import com.bingzer.android.cloudy.contracts.IDataHistory;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
-import com.bingzer.android.cloudy.contracts.NoSync;
+import com.bingzer.android.cloudy.contracts.ISystemEntity;
 import com.bingzer.android.dbv.Delegate;
 
-final class SyncHistory extends BaseEntity {
+final class SyncHistory extends BaseEntity implements IDataHistory {
 
     public static final String TABLE_NAME = "SyncHistory";
-
-    public static final int INSERTED = 0;
-    public static final int DELETED = 1;
-    public static final int UPDATED = 2;
 
     ////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,36 +101,36 @@ final class SyncHistory extends BaseEntity {
     ////////////////////////////////////////////////////////////////////////////////////
 
     public static void insert(IBaseEntity entity){
-        if(entity instanceof NoSync) return;
+        if(entity instanceof ISystemEntity) return;
 
         SyncHistory history = new SyncHistory();
         history.setAction(INSERTED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());
 
-        history.environment.getDatabase().get(TABLE_NAME).insert(history);
+        history.getEnvironment().getDatabase().get(TABLE_NAME).insert(history);
     }
 
     public static void delete(IBaseEntity entity){
-        if(entity instanceof NoSync) return;
+        if(entity instanceof ISystemEntity) return;
 
         SyncHistory history = new SyncHistory();
         history.setAction(DELETED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());
 
-        history.environment.getDatabase().get(TABLE_NAME).insert(history);
+        history.getEnvironment().getDatabase().get(TABLE_NAME).insert(history);
     }
 
     public static void update(IBaseEntity entity){
-        if(entity instanceof NoSync) return;
+        if(entity instanceof ISystemEntity) return;
 
         SyncHistory history = new SyncHistory();
         history.setAction(UPDATED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());
 
-        history.environment.getDatabase().get(TABLE_NAME).insert(history);
+        history.getEnvironment().getDatabase().get(TABLE_NAME).insert(history);
     }
 
 }
