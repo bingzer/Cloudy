@@ -1,26 +1,21 @@
 package com.bingzer.android.cloudy.contracts;
 
-import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.driven.RemoteFile;
 
 public interface ISyncManager {
 
+    long getClientId();
+
     /**
-     * Defines the remote root.
+     * Returns the Root
      */
-    void syncRoot(RemoteFile root);
+    RemoteFile getRoot();
 
     /**
      * Sync database
      * @param local the local database
      * @param dbRemoteFile dbRemote file
-     * @param factory EntityFactory
      */
-    void syncDatabase(IDatabase local, RemoteFile dbRemoteFile, IEntityFactory factory);
-
-    /**
-     * Sync now
-     */
-    void sync();
+    void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile);
 
 }

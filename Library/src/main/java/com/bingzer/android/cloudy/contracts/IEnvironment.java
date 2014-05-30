@@ -1,7 +1,6 @@
 package com.bingzer.android.cloudy.contracts;
 
 import com.bingzer.android.dbv.IDatabase;
-import com.bingzer.android.dbv.ITable;
 
 public interface IEnvironment {
 
@@ -15,7 +14,8 @@ public interface IEnvironment {
 
     /////////////////////////////////////////////////////////////////////////
 
-    IDataHistory createDataHistory();
+    ICloudyHistory createCloudyHistory();
 
-    IDataEntity createDataEntity();
+    ICloudyClient getClient(long clientId);
+
 }

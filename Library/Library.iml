@@ -71,20 +71,20 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 19 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" exported="" name="driven-0.4.0-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="jsr305-1.3.9" level="project" />
+    <orderEntry type="library" exported="" name="driven-gdrive-0.5.0-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="google-http-client-android-1.18.0-rc" level="project" />
     <orderEntry type="library" exported="" name="dagger-1.2.1" level="project" />
     <orderEntry type="library" exported="" name="google-oauth-client-1.18.0-rc" level="project" />
     <orderEntry type="library" exported="" name="google-http-client-1.18.0-rc" level="project" />
-    <orderEntry type="library" exported="" name="driven-gdrive-0.4.0-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="google-api-services-drive-v2-rev126-1.18.0-rc" level="project" />
     <orderEntry type="library" exported="" name="dbquery-2.0.0" level="project" />
     <orderEntry type="library" exported="" name="google-api-client-1.18.0-rc" level="project" />
     <orderEntry type="library" exported="" name="google-api-client-android-1.18.0-rc" level="project" />
-    <orderEntry type="library" exported="" name="driven-dropbox-0.4.0-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="butler-0.0.3-SNAPSHOT" level="project" />
     <orderEntry type="library" exported="" name="javax.inject-1" level="project" />
+    <orderEntry type="library" exported="" name="driven-0.5.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" exported="" name="driven-dropbox-0.5.0-SNAPSHOT" level="project" />
   </component>
 </module>
 

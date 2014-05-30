@@ -1,9 +1,11 @@
 package com.bingzer.android.cloudy.contracts;
 
+
 import android.database.Cursor;
 
 import com.bingzer.android.dbv.IEntity;
 
+import java.io.File;
 
 public interface IBaseEntity extends IEntity {
 
@@ -32,6 +34,10 @@ public interface IBaseEntity extends IEntity {
 
     @Override
     void map(Mapper mapper);
+
+    //////////////////////////////////////////////////////////////
+
+    File[] getLocalFiles();
 
     //////////////////////////////////////////////////////////////
 

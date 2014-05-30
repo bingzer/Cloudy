@@ -2,7 +2,10 @@ package com.bingzer.android.cloudy;
 
 import android.content.Context;
 
-import com.bingzer.android.cloudy.contracts.IEntityFactory;
+import com.bingzer.android.Parser;
+import com.bingzer.android.Path;
+import com.bingzer.android.Randomite;
+import com.bingzer.android.cloudy.contracts.ICloudyClient;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
@@ -12,71 +15,104 @@ import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.SQLiteBuilder;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
-import com.bingzer.android.driven.StorageProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import static com.bingzer.android.Stringify.isNullOrEmpty;
 
 public class SyncManager implements ISyncManager {
 
-    private StorageProvider storageProvider;
+    private static long INVALID_CLIENT_ID = -1;
+
     private RemoteFile root;
-    private DatabaseMapping dbMapping;
     private Context context;
-    private ISyncProvider syncProvider;
+    private long clientId;
+    private final File clientFile;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SyncManager(Context context, StorageProvider storageProvider){
-        this.context = context.getApplicationContext();
-        this.storageProvider = storageProvider;
-    }
-
-    @Override
-    public void syncRoot(RemoteFile root) {
+    public SyncManager(Context context, RemoteFile root){
         if(!root.isDirectory()) throw new SyncException("root must be a directory");
         this.root = root;
+        this.context = context.getApplicationContext();
+        this.clientFile = new File(context.getFilesDir(), "Cloudy.Client");
     }
 
     @Override
-    public void syncDatabase(IDatabase local, RemoteFile dbRemoteFile, IEntityFactory factory) {
-        dbMapping = new DatabaseMapping(local, dbRemoteFile, factory);
+    public long getClientId() {
+        if(clientId == INVALID_CLIENT_ID){
+            try {
+                clientId = generateUniqueId();
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return clientId;
     }
 
     @Override
-    public void sync() {
-        IEnvironment local = Environment.getLocalEnvironment();
-        IEnvironment remote = new Environment(getRemoteDb(), local.getEntityFactory());
-        syncProvider = new SyncProvider(local, remote);
-        syncProvider.sync(1);
+    public RemoteFile getRoot() {
+        return root;
     }
 
-    private IDatabase getRemoteDb(){
-        IDatabase localDb = Environment.getLocalEnvironment().getDatabase();
+    @Override
+    public void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile) {
+        ICloudyClient client = local.getClient(getClientId());
 
-        LocalFile dbLocalFile = downloadRemoteDbToLocal();
-        IDatabase db = DbQuery.getDatabase(localDb.getName());
-        db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), new SQLiteBuilder.WithoutModeling(context));
+        IEnvironment remote = createRemoteEnvironment(local, dbRemoteFile);
 
-        return db;
-    }
-
-    private LocalFile downloadRemoteDbToLocal(){
-        LocalFile localFile = new LocalFile(new File(context.getCacheDir(), dbMapping.dbRemoteFile.getName()));
-        dbMapping.dbRemoteFile.download(localFile);
-        return localFile;
+        ISyncProvider syncProvider = new SyncProvider(this, local, remote);
+        syncProvider.sync(client.getLastSync());
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    private class DatabaseMapping {
-        private IDatabase local;
-        private RemoteFile dbRemoteFile;
-        private IEntityFactory factory;
-        private DatabaseMapping(IDatabase local, RemoteFile dbRemoteFile, IEntityFactory factory){
-            this.local = local;
-            this.dbRemoteFile = dbRemoteFile;
-            this.factory = factory;
+    private long generateUniqueId() throws IOException{
+        if(clientFile.exists()){
+            // read from file
+            return readClientFile();
         }
+        else{
+            return writeClientFile();
+        }
+    }
+
+    private long readClientFile() throws IOException{
+        StringBuilder builder = new StringBuilder();
+        Path.copy(new FileInputStream(clientFile), builder);
+        String input = builder.toString();
+
+        if(!isNullOrEmpty(input)){
+            return Parser.parseLong(input, INVALID_CLIENT_ID);
+        }
+
+        return INVALID_CLIENT_ID;
+    }
+
+    private long writeClientFile() throws IOException {
+        long uniqueId = Randomite.uniqueId();
+
+        FileWriter fw = new FileWriter(clientFile);
+        fw.write(uniqueId + "");
+        fw.flush();
+        Path.safeClose(fw);
+
+        return readClientFile();
+    }
+
+    private IEnvironment createRemoteEnvironment(IEnvironment local, RemoteFile remoteDbFile){
+        LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
+        remoteDbFile.download(dbLocalFile);
+
+        IDatabase db = DbQuery.getDatabase(local.getDatabase().getName());
+        db.open(local.getDatabase().getVersion(), dbLocalFile.getFile().getAbsolutePath(), new SQLiteBuilder.WithoutModeling(context));
+
+        return new Environment(db, local.getEntityFactory());
     }
 
 }

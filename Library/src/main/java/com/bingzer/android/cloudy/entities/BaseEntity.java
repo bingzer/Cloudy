@@ -61,7 +61,7 @@ public abstract class BaseEntity implements IBaseEntity {
             onPreUpdated();
             environment.getDatabase().get(getTableName()).update(this);
 
-            SyncHistory.update(this);
+            CloudyHistory.update(this);
             onPostUpdated();
         }
         else {
@@ -70,7 +70,7 @@ public abstract class BaseEntity implements IBaseEntity {
             syncId = Randomite.uniqueId();
             id = environment.getDatabase().get(getTableName()).insert(this).query();
 
-            SyncHistory.insert(this);
+            CloudyHistory.insert(this);
             onPostInserted();
         }
     }
@@ -82,7 +82,7 @@ public abstract class BaseEntity implements IBaseEntity {
             onPreDeleted();
             environment.getDatabase().get(getTableName()).delete(this);
 
-            SyncHistory.delete(this);
+            CloudyHistory.delete(this);
             onPostDeleted();
         }
     }
@@ -139,19 +139,16 @@ public abstract class BaseEntity implements IBaseEntity {
         // placeHolder
     }
 
-    protected File[] getLocalFiles(){
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public File[] getLocalFiles(){
         return null;
     }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     public IEnvironment getEnvironment(){
         return environment;
-    }
-
-    public final boolean hasLocalFiles(){
-        return getLocalFiles() != null && getLocalFiles().length > 0;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

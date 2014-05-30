@@ -1,11 +1,10 @@
-package com.bingzer.android.cloudy;
+package com.example;
 
 import android.content.Context;
 
-import com.bingzer.android.cloudy.contracts.IEntityFactory;
+import com.bingzer.android.cloudy.SyncManager;
 import com.bingzer.android.cloudy.entities.BaseEntity;
 import com.bingzer.android.cloudy.entities.Environment;
-import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
@@ -17,33 +16,22 @@ import java.io.File;
 class TestUsage {
 
     void usageInit(Context context){
-
     }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     void usageBeforeSyncing(Context context) {
-        IDatabase localDb = Environment.getLocalEnvironment().getDatabase();
 
         Credential credential = new Credential(context);
         StorageProvider storageProvider = new GoogleDrive();
         storageProvider.authenticate(credential);
 
         RemoteFile root = storageProvider.get("MyAppRoot");
-        RemoteFile dbRemoteFile = storageProvider.get(root, "MyDb");
+        RemoteFile dbRemoteFile = root.get("MyDb");
 
-        SyncManager manager = new SyncManager(context, storageProvider);
-        manager.syncRoot(root);
-        manager.syncDatabase(localDb, dbRemoteFile, new IEntityFactory() {
-            public BaseEntity createEntity(String tableName) {
-                if(tableName.equals("ClassOne"))
-                    return new ClassOne();
-                else if(tableName.equals("ClassTwo"))
-                    return new ClassTwo();
-                return null;
-            }
-        });
+        SyncManager manager = new SyncManager(context, root);
+        manager.syncDatabase(Environment.getLocalEnvironment(), dbRemoteFile);
     }
 
 
@@ -67,7 +55,7 @@ class TestUsage {
         }
 
         @Override
-        protected File[] getLocalFiles() {
+        public File[] getLocalFiles() {
             return new File[]{ new File(path) };
         }
     }

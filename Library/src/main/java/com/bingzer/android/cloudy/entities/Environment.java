@@ -1,7 +1,7 @@
 package com.bingzer.android.cloudy.entities;
 
-import com.bingzer.android.cloudy.contracts.IDataEntity;
-import com.bingzer.android.cloudy.contracts.IDataHistory;
+import com.bingzer.android.cloudy.contracts.ICloudyClient;
+import com.bingzer.android.cloudy.contracts.ICloudyHistory;
 import com.bingzer.android.cloudy.contracts.IEntityFactory;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.dbv.IDatabase;
@@ -51,13 +51,13 @@ public class Environment implements IEnvironment {
     }
 
     @Override
-    public IDataHistory createDataHistory() {
-        return new SyncHistory(this);
+    public ICloudyHistory createCloudyHistory() {
+        return new CloudyHistory(this);
     }
 
     @Override
-    public IDataEntity createDataEntity() {
-        return new SyncData(this);
+    public ICloudyClient getClient(long clientId) {
+        return CloudyClient.getClient(clientId);
     }
 
 

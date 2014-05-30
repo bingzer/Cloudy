@@ -1,16 +1,12 @@
 package com.bingzer.android.cloudy.entities;
 
 import com.bingzer.android.cloudy.contracts.IBaseEntity;
-import com.bingzer.android.cloudy.contracts.IDataHistory;
+import com.bingzer.android.cloudy.contracts.ICloudyHistory;
 import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.cloudy.contracts.ISystemEntity;
 import com.bingzer.android.dbv.Delegate;
 
-final class SyncHistory extends BaseEntity implements IDataHistory {
-
-    public static final String TABLE_NAME = "SyncHistory";
-
-    ////////////////////////////////////////////////////////////////////////////////////
+final class CloudyHistory extends BaseEntity implements ICloudyHistory {
 
     private int action;
     private String name;
@@ -18,11 +14,11 @@ final class SyncHistory extends BaseEntity implements IDataHistory {
 
     ////////////////////////////////////////////////////////////////////////////////////
 
-    private SyncHistory(){
+    private CloudyHistory(){
         this(null);
     }
 
-    SyncHistory(IEnvironment environment){
+    CloudyHistory(IEnvironment environment){
         super(environment);
     }
 
@@ -103,7 +99,7 @@ final class SyncHistory extends BaseEntity implements IDataHistory {
     public static void insert(IBaseEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        SyncHistory history = new SyncHistory();
+        CloudyHistory history = new CloudyHistory();
         history.setAction(INSERTED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());
@@ -114,7 +110,7 @@ final class SyncHistory extends BaseEntity implements IDataHistory {
     public static void delete(IBaseEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        SyncHistory history = new SyncHistory();
+        CloudyHistory history = new CloudyHistory();
         history.setAction(DELETED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());
@@ -125,7 +121,7 @@ final class SyncHistory extends BaseEntity implements IDataHistory {
     public static void update(IBaseEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        SyncHistory history = new SyncHistory();
+        CloudyHistory history = new CloudyHistory();
         history.setAction(UPDATED);
         history.setName(entity.getTableName());
         history.setSyncId(entity.getSyncId());

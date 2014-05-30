@@ -21,7 +21,7 @@ repositories {
 }
 
 BUTLER_VERSION = "0.0.3-SNAPSHOT"
-DRIVEN_VERSION = "0.4.0-SNAPSHOT"
+DRIVEN_VERSION = "0.5.0-SNAPSHOT"
 
 dependencies {
     compile (group:'com.bingzer.android',        name: 'butler',          version:BUTLER_VERSION, changing: true)
