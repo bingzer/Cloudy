@@ -1,5 +1,6 @@
 package com.bingzer.android.cloudy;
 
+import com.bingzer.android.Randomite;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.BaseEntity;
 import com.bingzer.android.dbv.Delegate;
@@ -36,6 +37,28 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
     @Override
     public final void setSyncId(long syncId) {
         this.syncId = syncId;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    @Override
+    protected void onBeforeInsert() {
+        syncId = Randomite.uniqueId();
+    }
+
+    @Override
+    protected void onAfterInsert() {
+        CloudyHistory.insert(this);
+    }
+
+    @Override
+    protected void onAfterUpdate() {
+        CloudyHistory.update(this);
+    }
+
+    @Override
+    protected void onAfterDelete() {
+        CloudyHistory.delete(this);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
