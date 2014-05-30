@@ -1,5 +1,6 @@
 package com.bingzer.android.cloudy.contracts;
 
+import com.bingzer.android.dbv.contracts.IEnvironment;
 import com.bingzer.android.driven.RemoteFile;
 
 public interface ISyncManager {

@@ -2,9 +2,13 @@ package com.example;
 
 import android.content.Context;
 
+import com.bingzer.android.cloudy.SyncEntity;
 import com.bingzer.android.cloudy.SyncManager;
-import com.bingzer.android.cloudy.entities.BaseEntity;
-import com.bingzer.android.cloudy.entities.Environment;
+import com.bingzer.android.dbv.DbQuery;
+import com.bingzer.android.dbv.Environment;
+import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.dbv.OrmBuilder;
+import com.bingzer.android.dbv.contracts.IEntityFactory;
 import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
@@ -16,6 +20,25 @@ import java.io.File;
 class TestUsage {
 
     void usageInit(Context context){
+
+        IDatabase db = DbQuery.getDatabase("");
+        db.open(1, new OrmBuilder() {
+            @Override
+            public IEntityFactory getEntityFactory() {
+                return null;
+            }
+
+            @Override
+            public Context getContext() {
+                return null;
+            }
+
+            @Override
+            public void onModelCreate(IDatabase iDatabase, IDatabase.Modeling modeling) {
+
+            }
+        });
+
     }
 
 
@@ -37,7 +60,7 @@ class TestUsage {
 
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private class ClassOne extends BaseEntity {
+    private class ClassOne extends SyncEntity {
 
         @Override
         public String getTableName() {
@@ -45,7 +68,7 @@ class TestUsage {
         }
     }
 
-    private class ClassTwo extends BaseEntity {
+    private class ClassTwo extends SyncEntity {
 
         private String path;
 

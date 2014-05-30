@@ -1,20 +1,14 @@
-package com.bingzer.android.cloudy.entities;
+package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.ICloudyClient;
-import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.ITable;
+import com.bingzer.android.dbv.contracts.IEnvironment;
 
-final class CloudyClient extends BaseEntity implements ICloudyClient {
+final class CloudyClient extends SyncEntity implements ICloudyClient {
 
     private long clientId;
     private long lastSync;
-
-    ////////////////////////////////////////////////////////////////////////////////////////
-
-    private CloudyClient(){
-        this(null);
-    }
 
     CloudyClient(IEnvironment environment){
         super(environment);
@@ -80,8 +74,8 @@ final class CloudyClient extends BaseEntity implements ICloudyClient {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    public static CloudyClient getClient(long clientId){
-        final CloudyClient syncData = new CloudyClient();
+    protected static ICloudyClient getClient(IEnvironment environment, long clientId){
+        final CloudyClient syncData = new CloudyClient(environment);
         ITable table = syncData.getEnvironment().getDatabase().get(TABLE_NAME);
 
         if(table.has("ClientId = ?", clientId)){

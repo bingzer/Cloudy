@@ -6,13 +6,13 @@ import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Randomite;
 import com.bingzer.android.cloudy.contracts.ICloudyClient;
-import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
-import com.bingzer.android.cloudy.entities.Environment;
 import com.bingzer.android.dbv.DbQuery;
+import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.SQLiteBuilder;
+import com.bingzer.android.dbv.contracts.IEnvironment;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
 
@@ -62,7 +62,7 @@ public class SyncManager implements ISyncManager {
 
     @Override
     public void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile) {
-        ICloudyClient client = local.getClient(getClientId());
+        ICloudyClient client = CloudyClient.getClient(local, getClientId());
 
         IEnvironment remote = createRemoteEnvironment(local, dbRemoteFile);
 

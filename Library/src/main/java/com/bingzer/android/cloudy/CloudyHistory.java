@@ -1,12 +1,12 @@
-package com.bingzer.android.cloudy.entities;
+package com.bingzer.android.cloudy;
 
-import com.bingzer.android.cloudy.contracts.IBaseEntity;
 import com.bingzer.android.cloudy.contracts.ICloudyHistory;
-import com.bingzer.android.cloudy.contracts.IEnvironment;
 import com.bingzer.android.cloudy.contracts.ISystemEntity;
 import com.bingzer.android.dbv.Delegate;
+import com.bingzer.android.dbv.contracts.IBaseEntity;
+import com.bingzer.android.dbv.contracts.IEnvironment;
 
-final class CloudyHistory extends BaseEntity implements ICloudyHistory {
+final class CloudyHistory extends SyncEntity implements ICloudyHistory {
 
     private int action;
     private String name;

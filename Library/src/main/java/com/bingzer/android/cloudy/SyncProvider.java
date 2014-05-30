@@ -4,13 +4,14 @@ import android.database.Cursor;
 import android.util.Log;
 
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IBaseEntity;
 import com.bingzer.android.cloudy.contracts.ICloudyClient;
 import com.bingzer.android.cloudy.contracts.ICloudyHistory;
-import com.bingzer.android.cloudy.contracts.IEnvironment;
+import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.ITable;
+import com.bingzer.android.dbv.contracts.IBaseEntity;
+import com.bingzer.android.dbv.contracts.IEnvironment;
 import com.bingzer.android.dbv.queries.ISequence;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
@@ -52,53 +53,62 @@ class SyncProvider implements ISyncProvider {
         updateCloudClient(now, remote);
     }
 
+    /////////////////////////////////////////////////////////////////////////////////////////
+
     private void updateEnvironment(final int streamType, long timestamp, final IEnvironment source, final IEnvironment target){
-        final ICloudyHistory syncHistory = target.createCloudyHistory();
+        final ICloudyHistory syncHistory = new CloudyHistory(target);
         source.getDatabase().get(ICloudyHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
-
                     @Override
                     public boolean next(Cursor cursor) {
-                        syncHistory.load(cursor);
-                        final ITable localTable = source.getDatabase().get(syncHistory.getName());
-                        final ITable remoteTable = target.getDatabase().get(syncHistory.getName());
-                        final IBaseEntity entity = target.getEntityFactory().createEntity(syncHistory.getName());
-
-                        switch (syncHistory.getAction()) {
-                            case ICloudyHistory.INSERTED:
-                                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(entity);
-                                remoteTable.insert(entity);
-
-                                create(streamType, entity);
-                                break;
-                            case ICloudyHistory.DELETED:
-                                remoteTable.delete("SyncID = ?", syncHistory.getSyncId());
-
-                                delete(streamType, entity);
-                                break;
-                            case ICloudyHistory.UPDATED:
-                                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(entity);
-                                remoteTable.update(entity);
-
-                                update(streamType, entity);
-                                break;
-                        }
-
-                        return true;
+                        return syncSequence(streamType, source, target, syncHistory, cursor);
                     }
                 });
     }
 
     private void updateCloudClient(long timestamp, final IEnvironment source){
-        ICloudyClient client = source.getClient(manager.getClientId());
+        ICloudyClient client = CloudyClient.getClient(source, manager.getClientId());
         client.setLastSync(timestamp);
         client.save();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private void create(int streamType, IBaseEntity entity){
+    private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment target, ICloudyHistory syncHistory, Cursor cursor){
+        syncHistory.load(cursor);
+
+        ITable localTable = source.getDatabase().get(syncHistory.getName());
+        ITable remoteTable = target.getDatabase().get(syncHistory.getName());
+        IBaseEntity entity = target.getEntityFactory().createEntity(syncHistory.getName());
+        if(entity instanceof SyncEntity)
+            throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
+        ISyncEntity syncEntity = (ISyncEntity) entity;
+
+        switch (syncHistory.getAction()) {
+            case ICloudyHistory.INSERTED:
+                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
+                remoteTable.insert(syncEntity);
+
+                create(streamType, syncEntity);
+                break;
+            case ICloudyHistory.DELETED:
+                remoteTable.delete("SyncID = ?", syncHistory.getSyncId());
+
+                delete(streamType, syncEntity);
+                break;
+            case ICloudyHistory.UPDATED:
+                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
+                remoteTable.update(syncEntity);
+
+                update(streamType, syncEntity);
+                break;
+        }
+
+        return true;
+    }
+
+    private void create(int streamType, ISyncEntity entity){
         switch (streamType){
             default:
                 throw new SyncException("Unknown stream type: " + streamType);
@@ -111,7 +121,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void delete(int streamType, IBaseEntity entity){
+    private void delete(int streamType, ISyncEntity entity){
         switch (streamType){
             default:
                 throw new SyncException("Unknown stream type: " + streamType);
@@ -124,7 +134,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void update(int streamType, IBaseEntity entity){
+    private void update(int streamType, ISyncEntity entity){
         switch (streamType){
             default:
                 throw new SyncException("Unknown stream type: " + streamType);
@@ -139,7 +149,7 @@ class SyncProvider implements ISyncProvider {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private void createUpstream(IBaseEntity entity){
+    private void createUpstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
@@ -151,7 +161,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void createDownstream(IBaseEntity entity){
+    private void createDownstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
@@ -164,7 +174,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void deleteUpstream(IBaseEntity entity){
+    private void deleteUpstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
@@ -176,7 +186,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void deleteDownstream(IBaseEntity entity){
+    private void deleteDownstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
 
             for(File file : entity.getLocalFiles()){
@@ -186,7 +196,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void updateUpstream(IBaseEntity entity){
+    private void updateUpstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
@@ -199,7 +209,7 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void updateDownstream(IBaseEntity entity){
+    private void updateDownstream(ISyncEntity entity){
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
@@ -214,7 +224,7 @@ class SyncProvider implements ISyncProvider {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private RemoteFile getRemoteDirectory(IBaseEntity entity){
+    private RemoteFile getRemoteDirectory(ISyncEntity entity){
         RemoteFile remoteFile = manager.getRoot().get(entity.getTableName());
         if(remoteFile == null)
             remoteFile = manager.getRoot().create(entity.getTableName());
@@ -224,12 +234,12 @@ class SyncProvider implements ISyncProvider {
         return remoteFile;
     }
 
-    private String createRemoteFileNameForLocalFile(IBaseEntity entity, File file){
+    private String createRemoteFileNameForLocalFile(ISyncEntity entity, File file){
         return entity.getSyncId() + ":" + file.getName();
     }
 
     private void updateCloudHistory(int type, long timestamp, final IEnvironment source, final IEnvironment target){
-        final ICloudyHistory syncHistory = target.createCloudyHistory();
+        final ICloudyHistory syncHistory = new CloudyHistory(target);
         source.getDatabase().get(ICloudyHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
@@ -243,7 +253,7 @@ class SyncProvider implements ISyncProvider {
                 });
     }
 
-    private boolean hasLocalFiles(IBaseEntity entity){
+    private boolean hasLocalFiles(ISyncEntity entity){
         return entity.getLocalFiles() != null && entity.getLocalFiles().length > 0;
     }
 
