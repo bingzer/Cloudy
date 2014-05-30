@@ -12,7 +12,6 @@ import com.bingzer.android.dbv.contracts.IEntityFactory;
 import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
-import com.bingzer.android.driven.gdrive.GoogleDrive;
 
 import java.io.File;
 
@@ -47,7 +46,7 @@ class TestUsage {
     void usageBeforeSyncing(Context context) {
 
         Credential credential = new Credential(context);
-        StorageProvider storageProvider = new GoogleDrive();
+        StorageProvider storageProvider = null;
         storageProvider.authenticate(credential);
 
         RemoteFile root = storageProvider.get("MyAppRoot");
