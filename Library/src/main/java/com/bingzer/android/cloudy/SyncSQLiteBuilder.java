@@ -2,13 +2,14 @@ package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.ICloudyClient;
 import com.bingzer.android.cloudy.contracts.ICloudyHistory;
+import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.IDatabase;
-import com.bingzer.android.dbv.OrmBuilder;
+import com.bingzer.android.dbv.SQLiteBuilder;
 
 /**
  * You must use this builder
  */
-public abstract class SyncSQLiteBuilder extends OrmBuilder{
+public abstract class SyncSQLiteBuilder extends SQLiteBuilder {
 
     @Override
     public void onModelCreate(IDatabase db, IDatabase.Modeling modeling) {
@@ -31,5 +32,11 @@ public abstract class SyncSQLiteBuilder extends OrmBuilder{
                 .ifNotExists();
 
     }
+
+    /**
+     * This method will be called when {@link com.bingzer.android.cloudy.SyncManager}
+     * requires to create a sample type of {@code ISyncEntity} to populate the data with.
+     */
+    protected abstract ISyncEntity onEntityCreate(String tableName);
 
 }

@@ -2,8 +2,9 @@ package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.ICloudyClient;
 import com.bingzer.android.dbv.Delegate;
+import com.bingzer.android.dbv.IEntity;
+import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.ITable;
-import com.bingzer.android.dbv.contracts.IEnvironment;
 
 final class CloudyClient extends SyncEntity implements ICloudyClient {
 
@@ -45,7 +46,7 @@ final class CloudyClient extends SyncEntity implements ICloudyClient {
     ////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void map(Mapper mapper) {
+    public void map(IEntity.Mapper mapper) {
         super.map(mapper);
 
         mapper.map("ClientId", new Delegate.TypeLong() {

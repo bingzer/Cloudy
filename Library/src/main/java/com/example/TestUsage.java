@@ -4,11 +4,11 @@ import android.content.Context;
 
 import com.bingzer.android.cloudy.SyncEntity;
 import com.bingzer.android.cloudy.SyncManager;
+import com.bingzer.android.cloudy.SyncSQLiteBuilder;
+import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
-import com.bingzer.android.dbv.OrmBuilder;
-import com.bingzer.android.dbv.contracts.IEntityFactory;
 import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
@@ -21,11 +21,7 @@ class TestUsage {
     void usageInit(Context context){
 
         IDatabase db = DbQuery.getDatabase("");
-        db.open(1, new OrmBuilder() {
-            @Override
-            public IEntityFactory getEntityFactory() {
-                return null;
-            }
+        db.open(1, new SyncSQLiteBuilder() {
 
             @Override
             public Context getContext() {
@@ -36,6 +32,12 @@ class TestUsage {
             public void onModelCreate(IDatabase iDatabase, IDatabase.Modeling modeling) {
 
             }
+
+            @Override
+            protected ISyncEntity onEntityCreate(String tableName) {
+                return null;
+            }
+
         });
 
     }

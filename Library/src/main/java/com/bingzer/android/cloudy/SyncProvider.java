@@ -9,9 +9,9 @@ import com.bingzer.android.cloudy.contracts.ICloudyHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
+import com.bingzer.android.dbv.IBaseEntity;
+import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.ITable;
-import com.bingzer.android.dbv.contracts.IBaseEntity;
-import com.bingzer.android.dbv.contracts.IEnvironment;
 import com.bingzer.android.dbv.queries.ISequence;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
@@ -78,9 +78,11 @@ class SyncProvider implements ISyncProvider {
     private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment target, ICloudyHistory syncHistory, Cursor cursor){
         syncHistory.load(cursor);
 
+        SyncSQLiteBuilder builder = (SyncSQLiteBuilder)source.getDatabase().getBuilder();
+
         ITable localTable = source.getDatabase().get(syncHistory.getName());
         ITable remoteTable = target.getDatabase().get(syncHistory.getName());
-        IBaseEntity entity = target.getEntityFactory().createEntity(syncHistory.getName());
+        IBaseEntity entity = builder.onEntityCreate(syncHistory.getName());
         if(entity instanceof SyncEntity)
             throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
         ISyncEntity syncEntity = (ISyncEntity) entity;

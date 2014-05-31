@@ -11,8 +11,8 @@ import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.SQLiteBuilder;
-import com.bingzer.android.dbv.contracts.IEnvironment;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
 
@@ -112,7 +112,7 @@ public class SyncManager implements ISyncManager {
         IDatabase db = DbQuery.getDatabase(local.getDatabase().getName());
         db.open(local.getDatabase().getVersion(), dbLocalFile.getFile().getAbsolutePath(), new SQLiteBuilder.WithoutModeling(context));
 
-        return new Environment(db, local.getEntityFactory());
+        return new Environment(db);
     }
 
 }

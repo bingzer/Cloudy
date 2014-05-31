@@ -1,10 +1,10 @@
 package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.ICloudyHistory;
+import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISystemEntity;
 import com.bingzer.android.dbv.Delegate;
-import com.bingzer.android.dbv.contracts.IBaseEntity;
-import com.bingzer.android.dbv.contracts.IEnvironment;
+import com.bingzer.android.dbv.IEnvironment;
 
 final class CloudyHistory extends SyncEntity implements ICloudyHistory {
 
@@ -96,7 +96,7 @@ final class CloudyHistory extends SyncEntity implements ICloudyHistory {
 
     ////////////////////////////////////////////////////////////////////////////////////
 
-    public static void insert(IBaseEntity entity){
+    public static void insert(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
         CloudyHistory history = new CloudyHistory();
@@ -107,7 +107,7 @@ final class CloudyHistory extends SyncEntity implements ICloudyHistory {
         history.getEnvironment().getDatabase().get(TABLE_NAME).insert(history);
     }
 
-    public static void delete(IBaseEntity entity){
+    public static void delete(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
         CloudyHistory history = new CloudyHistory();
@@ -118,7 +118,7 @@ final class CloudyHistory extends SyncEntity implements ICloudyHistory {
         history.getEnvironment().getDatabase().get(TABLE_NAME).insert(history);
     }
 
-    public static void update(IBaseEntity entity){
+    public static void update(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
         CloudyHistory history = new CloudyHistory();

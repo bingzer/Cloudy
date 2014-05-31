@@ -4,7 +4,7 @@ import com.bingzer.android.Randomite;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.BaseEntity;
 import com.bingzer.android.dbv.Delegate;
-import com.bingzer.android.dbv.contracts.IEnvironment;
+import com.bingzer.android.dbv.IEnvironment;
 
 import java.io.File;
 
@@ -77,12 +77,7 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
 
     @Override
     public void map(Mapper mapper) {
-        mapper.mapId(new Delegate.TypeId(this) {
-            @Override
-            public void set(Long value) {
-                setId(value);
-            }
-        });
+        mapId(mapper);
         mapper.map("SyncId", new Delegate.TypeLong() {
             @Override
             public void set(Long aLong) {
