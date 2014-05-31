@@ -4,12 +4,21 @@ import com.bingzer.android.cloudy.contracts.ICloudyClient;
 import com.bingzer.android.cloudy.contracts.ICloudyHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.SQLiteBuilder;
 
 /**
  * You must use this builder
  */
 public abstract class SyncSQLiteBuilder extends SQLiteBuilder {
+
+    protected SyncSQLiteBuilder() {
+        super();
+    }
+
+    protected SyncSQLiteBuilder(IEnvironment environment) {
+        super(environment);
+    }
 
     @Override
     public void onModelCreate(IDatabase db, IDatabase.Modeling modeling) {
