@@ -4,8 +4,8 @@ import android.database.Cursor;
 import android.util.Log;
 
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.ICloudyClient;
-import com.bingzer.android.cloudy.contracts.ICloudyHistory;
+import com.bingzer.android.cloudy.contracts.IClientSyncInfo;
+import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
@@ -56,8 +56,8 @@ class SyncProvider implements ISyncProvider {
     /////////////////////////////////////////////////////////////////////////////////////////
 
     private void updateEnvironment(final int streamType, long timestamp, final IEnvironment source, final IEnvironment target){
-        final ICloudyHistory syncHistory = new CloudyHistory(target);
-        source.getDatabase().get(ICloudyHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
+        final IEntityHistory syncHistory = new EntityHistory(target);
+        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
                     @Override
@@ -68,38 +68,38 @@ class SyncProvider implements ISyncProvider {
     }
 
     private void updateCloudClient(long timestamp, final IEnvironment source){
-        ICloudyClient client = CloudyClient.getClient(source, manager.getClientId());
+        IClientSyncInfo client = ClientSyncInfo.getClient(source, manager.getClientId());
         client.setLastSync(timestamp);
         client.save();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment target, ICloudyHistory syncHistory, Cursor cursor){
+    private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment target, IEntityHistory syncHistory, Cursor cursor){
         syncHistory.load(cursor);
 
-        SyncSQLiteBuilder builder = (SyncSQLiteBuilder)source.getDatabase().getBuilder();
+        SQLiteSyncBuilder builder = (SQLiteSyncBuilder)source.getDatabase().getBuilder();
 
-        ITable localTable = source.getDatabase().get(syncHistory.getName());
-        ITable remoteTable = target.getDatabase().get(syncHistory.getName());
-        IBaseEntity entity = builder.onEntityCreate(syncHistory.getName());
+        ITable localTable = source.getDatabase().get(syncHistory.getEntityName());
+        ITable remoteTable = target.getDatabase().get(syncHistory.getEntityName());
+        IBaseEntity entity = builder.onEntityCreate(source, syncHistory.getEntityName());
         if(entity instanceof SyncEntity)
             throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
         ISyncEntity syncEntity = (ISyncEntity) entity;
 
-        switch (syncHistory.getAction()) {
-            case ICloudyHistory.INSERTED:
+        switch (syncHistory.getEntityAction()) {
+            case IEntityHistory.INSERT:
                 localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
                 remoteTable.insert(syncEntity);
 
                 create(streamType, syncEntity);
                 break;
-            case ICloudyHistory.DELETED:
+            case IEntityHistory.DELETE:
                 remoteTable.delete("SyncID = ?", syncHistory.getSyncId());
 
                 delete(streamType, syncEntity);
                 break;
-            case ICloudyHistory.UPDATED:
+            case IEntityHistory.UPDATE:
                 localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
                 remoteTable.update(syncEntity);
 
@@ -241,8 +241,8 @@ class SyncProvider implements ISyncProvider {
     }
 
     private void updateCloudHistory(int type, long timestamp, final IEnvironment source, final IEnvironment target){
-        final ICloudyHistory syncHistory = new CloudyHistory(target);
-        source.getDatabase().get(ICloudyHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
+        final IEntityHistory syncHistory = new EntityHistory(target);
+        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
                 .orderBy("Timestamp DESC")
                 .query(new ISequence<Cursor>() {
                     @Override

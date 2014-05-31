@@ -5,7 +5,7 @@ import android.content.Context;
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Randomite;
-import com.bingzer.android.cloudy.contracts.ICloudyClient;
+import com.bingzer.android.cloudy.contracts.IClientSyncInfo;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.DbQuery;
@@ -23,7 +23,7 @@ import java.io.IOException;
 
 import static com.bingzer.android.Stringify.isNullOrEmpty;
 
-public class SyncManager implements ISyncManager {
+public class SQLiteSyncManager implements ISyncManager {
 
     private static long INVALID_CLIENT_ID = -1;
 
@@ -34,7 +34,7 @@ public class SyncManager implements ISyncManager {
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SyncManager(Context context, RemoteFile root){
+    public SQLiteSyncManager(Context context, RemoteFile root){
         if(!root.isDirectory()) throw new SyncException("root must be a directory");
         this.root = root;
         this.context = context.getApplicationContext();
@@ -62,7 +62,7 @@ public class SyncManager implements ISyncManager {
 
     @Override
     public void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile) {
-        ICloudyClient client = CloudyClient.getClient(local, getClientId());
+        IClientSyncInfo client = ClientSyncInfo.getClient(local, getClientId());
 
         IEnvironment remote = createRemoteEnvironment(local, dbRemoteFile);
 

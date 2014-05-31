@@ -2,13 +2,14 @@ package com.example;
 
 import android.content.Context;
 
+import com.bingzer.android.cloudy.SQLiteSyncBuilder;
+import com.bingzer.android.cloudy.SQLiteSyncManager;
 import com.bingzer.android.cloudy.SyncEntity;
-import com.bingzer.android.cloudy.SyncManager;
-import com.bingzer.android.cloudy.SyncSQLiteBuilder;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
+import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.RemoteFile;
 import com.bingzer.android.driven.StorageProvider;
@@ -21,7 +22,7 @@ class TestUsage {
     void usageInit(Context context){
 
         IDatabase db = DbQuery.getDatabase("");
-        db.open(1, new SyncSQLiteBuilder() {
+        db.open(1, new SQLiteSyncBuilder() {
 
             @Override
             public Context getContext() {
@@ -34,7 +35,7 @@ class TestUsage {
             }
 
             @Override
-            protected ISyncEntity onEntityCreate(String tableName) {
+            protected ISyncEntity onEntityCreate(IEnvironment environment, String tableName) {
                 return null;
             }
 
@@ -47,14 +48,17 @@ class TestUsage {
 
     void usageBeforeSyncing(Context context) {
 
+        // -- setup the storage provider that we're going to use
         Credential credential = new Credential(context);
         StorageProvider storageProvider = null;
         storageProvider.authenticate(credential);
 
+        // defines the root and the sqlite remote file
         RemoteFile root = storageProvider.get("MyAppRoot");
         RemoteFile dbRemoteFile = root.get("MyDb");
 
-        SyncManager manager = new SyncManager(context, root);
+        // sync now
+        SQLiteSyncManager manager = new SQLiteSyncManager(context, root);
         manager.syncDatabase(Environment.getLocalEnvironment(), dbRemoteFile);
     }
 

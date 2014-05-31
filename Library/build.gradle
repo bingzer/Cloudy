@@ -28,16 +28,21 @@ dependencies {
     compile (group:'com.bingzer.android',        name: 'butler',   version:BUTLER_VERSION,  changing: true)
     compile (group:'com.bingzer.android.dbv',    name: 'dbquery',  version:DBQUERY_VERSION, changing: true)
     compile (group:'com.bingzer.android.driven', name: 'driven',   version:DRIVEN_VERSION,  changing: true)
+
+    // -- Mockito
+    androidTestCompile 'org.mockito:mockito-core:1.9.5'
+    androidTestCompile 'com.google.dexmaker:dexmaker:1.1'
+    androidTestCompile 'com.google.dexmaker:dexmaker-mockito:1.1'
 }
 
-/*
+
 configurations.all {
     resolutionStrategy {
         // don't cache changing modules at all
         cacheChangingModulesFor 0, 'seconds'
     }
 }
-*/
+
 
 
 apply from: 'https://raw.github.com/chrisbanes/gradle-mvn-push/master/gradle-mvn-push.gradle'

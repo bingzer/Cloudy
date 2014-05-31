@@ -10,7 +10,7 @@ import java.io.File;
 
 public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
 
-    private long syncId = -1;
+    private long syncId = Randomite.uniqueId();
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,34 +43,31 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
 
     @Override
     protected void onBeforeInsert() {
-        syncId = Randomite.uniqueId();
+        if(syncId == -1)
+            syncId = Randomite.uniqueId();
     }
 
     @Override
     protected void onAfterInsert() {
-        CloudyHistory.insert(this);
+        EntityHistory.insert(this);
     }
 
     @Override
     protected void onAfterUpdate() {
-        CloudyHistory.update(this);
+        EntityHistory.update(this);
     }
 
     @Override
     protected void onAfterDelete() {
-        CloudyHistory.delete(this);
+        EntityHistory.delete(this);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public final void loadBySyncId(){
-        load(getSyncId());
-    }
-
-    @Override
-    public final void loadBySyncId(long syncId){
+    public final boolean loadBySyncId(long syncId){
         environment.getDatabase().get(getTableName()).select("SyncId = ?", syncId).query(this);
+        return this.syncId == syncId;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

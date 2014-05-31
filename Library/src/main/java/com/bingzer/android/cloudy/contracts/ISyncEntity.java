@@ -12,7 +12,5 @@ public interface ISyncEntity extends IBaseEntity {
 
     long getSyncId();
 
-    void loadBySyncId();
-
-    void loadBySyncId(long syncId);
+    boolean loadBySyncId(long syncId);
 }
