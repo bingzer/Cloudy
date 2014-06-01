@@ -21,7 +21,8 @@ public class TestDbBuilder extends SQLiteSyncBuilder {
                 .addPrimaryKey("Id")
                 .addInteger("SyncId")
                 .addText("Name")
-                .addInteger("Age");
+                .addInteger("Age")
+                .addText("Picture");
     }
 
     @Override

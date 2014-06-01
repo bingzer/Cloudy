@@ -41,7 +41,6 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
                 .addInteger("Timestamp")
                 .index("Timestamp", "SyncId", "Id")
                 .ifNotExists();
-
     }
 
     /**

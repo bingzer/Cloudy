@@ -28,7 +28,7 @@ class SyncProvider implements ISyncProvider {
     private IEnvironment local;
     private ISyncManager manager;
 
-    public SyncProvider(ISyncManager manager, IEnvironment local, IEnvironment remote){
+    SyncProvider(ISyncManager manager, IEnvironment local, IEnvironment remote){
         this.manager = manager;
         this.local = local;
         this.remote = remote;
@@ -37,37 +37,57 @@ class SyncProvider implements ISyncProvider {
     @Override
     public void sync(long timestamp) {
         Log.i(TAG, "Sync starting. LastSync: " + timestamp);
+        long now = Timespan.now();
+        TimeRange range = new TimeRange(timestamp, now);
 
         // update Local to Remote
-        updateEnvironment(UPSTREAM, timestamp, local, remote);
+        syncEnvironment(UPSTREAM, range, local, remote);
         // update Remote to Local
-        updateEnvironment(DOWNSTREAM, timestamp, remote, local);
+        syncEnvironment(DOWNSTREAM, range, remote, local);
 
         // update sync history
-        updateCloudHistory(UPSTREAM, timestamp, local, remote);
-        updateCloudHistory(DOWNSTREAM, timestamp, remote, local);
+        syncEntityHistory(UPSTREAM, range, local, remote);
+        syncEntityHistory(DOWNSTREAM, range, remote, local);
 
         // update client data
-        long now = Timespan.now();
-        updateCloudClient(now, local);
-        updateCloudClient(now, remote);
+        syncClient(now, local);
+        syncClient(now, remote);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private void updateEnvironment(final int streamType, long timestamp, final IEnvironment source, final IEnvironment target){
-        final IEntityHistory syncHistory = new EntityHistory(target);
-        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
-                .orderBy("Timestamp DESC")
+    private void syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final IEntityHistory syncHistory = new EntityHistory(destination);
+        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
+                .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
-                        return syncSequence(streamType, source, target, syncHistory, cursor);
+                        return syncSequence(streamType, source, destination, syncHistory, cursor);
                     }
                 });
     }
 
-    private void updateCloudClient(long timestamp, final IEnvironment source){
+    private void syncEntityHistory(int type, TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final IEntityHistory syncHistory = new EntityHistory(destination);
+        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
+                .orderBy("Timestamp")
+                .query(new ISequence<Cursor>() {
+                    @Override
+                    public boolean next(Cursor cursor) {
+                        syncHistory.load(cursor);
+                        if(!destination.getDatabase()
+                                .get(IEntityHistory.TABLE_NAME)
+                                .has("SyncId = ?", syncHistory.getSyncId())){
+                            syncHistory.setId(-1);
+                            syncHistory.save();
+                        }
+                        return true;
+                    }
+                });
+    }
+
+    private void syncClient(long timestamp, final IEnvironment source){
         IClientSyncInfo client = ClientSyncInfo.getClient(source, manager.getClientId());
         client.setLastSync(timestamp);
         client.save();
@@ -75,33 +95,34 @@ class SyncProvider implements ISyncProvider {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment target, IEntityHistory syncHistory, Cursor cursor){
+    private boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment destination, IEntityHistory syncHistory, Cursor cursor){
         syncHistory.load(cursor);
 
         SQLiteSyncBuilder builder = (SQLiteSyncBuilder)source.getDatabase().getBuilder();
 
-        ITable localTable = source.getDatabase().get(syncHistory.getEntityName());
-        ITable remoteTable = target.getDatabase().get(syncHistory.getEntityName());
+        ITable sourceTable = source.getDatabase().get(syncHistory.getEntityName());
+        ITable destinationTable = destination.getDatabase().get(syncHistory.getEntityName());
+
         IBaseEntity entity = builder.onEntityCreate(source, syncHistory.getEntityName());
-        if(entity instanceof SyncEntity)
+        if(!(entity instanceof SyncEntity))
             throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
         ISyncEntity syncEntity = (ISyncEntity) entity;
 
         switch (syncHistory.getEntityAction()) {
             case IEntityHistory.INSERT:
-                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
-                remoteTable.insert(syncEntity);
+                sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
+                destinationTable.insert(syncEntity);
 
                 create(streamType, syncEntity);
                 break;
             case IEntityHistory.DELETE:
-                remoteTable.delete("SyncID = ?", syncHistory.getSyncId());
+                destinationTable.delete("SyncID = ?", syncHistory.getEntitySyncId());
 
                 delete(streamType, syncEntity);
                 break;
             case IEntityHistory.UPDATE:
-                localTable.select("SyncId = ?", syncHistory.getSyncId()).query(syncEntity);
-                remoteTable.update(syncEntity);
+                sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
+                destinationTable.update(syncEntity);
 
                 update(streamType, syncEntity);
                 break;
@@ -240,23 +261,19 @@ class SyncProvider implements ISyncProvider {
         return entity.getSyncId() + ":" + file.getName();
     }
 
-    private void updateCloudHistory(int type, long timestamp, final IEnvironment source, final IEnvironment target){
-        final IEntityHistory syncHistory = new EntityHistory(target);
-        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp > ?", timestamp)
-                .orderBy("Timestamp DESC")
-                .query(new ISequence<Cursor>() {
-                    @Override
-                    public boolean next(Cursor cursor) {
-                        syncHistory.load(cursor);
-                        syncHistory.save();
-
-                        return true;
-                    }
-                });
-    }
-
     private boolean hasLocalFiles(ISyncEntity entity){
         return entity.getLocalFiles() != null && entity.getLocalFiles().length > 0;
     }
 
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    private static class TimeRange {
+        long from;
+        long to;
+        TimeRange(long from, long to){
+            this.from = from;
+            this.to = to;
+        }
+    }
 }

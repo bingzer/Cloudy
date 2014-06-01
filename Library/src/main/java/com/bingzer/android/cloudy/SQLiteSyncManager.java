@@ -16,8 +16,10 @@ import com.bingzer.android.dbv.SQLiteBuilder;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -29,7 +31,7 @@ public class SQLiteSyncManager implements ISyncManager {
 
     private RemoteFile root;
     private Context context;
-    private long clientId;
+    private long clientId = INVALID_CLIENT_ID;
     private final File clientFile;
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -83,24 +85,25 @@ public class SQLiteSyncManager implements ISyncManager {
     }
 
     private long readClientFile() throws IOException{
-        StringBuilder builder = new StringBuilder();
-        Path.copy(new FileInputStream(clientFile), builder);
-        String input = builder.toString();
+        BufferedReader br = new BufferedReader(new FileReader(clientFile));
+        String input = br.readLine();
+        Path.safeClose(br);
 
+        long uniqueId = INVALID_CLIENT_ID;
         if(!isNullOrEmpty(input)){
-            return Parser.parseLong(input, INVALID_CLIENT_ID);
+            uniqueId = Parser.parseLong(input, INVALID_CLIENT_ID);
+            if(uniqueId == INVALID_CLIENT_ID)
+                throw new IOException("Not a valid ClientId: " + input);
         }
-
-        return INVALID_CLIENT_ID;
+        return uniqueId;
     }
 
     private long writeClientFile() throws IOException {
-        long uniqueId = Randomite.uniqueId();
+        Long uniqueId = Randomite.uniqueId();
 
         FileWriter fw = new FileWriter(clientFile);
-        fw.write(uniqueId + "");
-        fw.flush();
-        Path.safeClose(fw);
+        fw.write(uniqueId.toString());
+        fw.close();
 
         return readClientFile();
     }

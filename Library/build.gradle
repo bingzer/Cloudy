@@ -39,10 +39,8 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // don't cache changing modules at all
-        cacheChangingModulesFor 0, 'seconds'
+        //cacheChangingModulesFor 0, 'seconds'
     }
 }
-
-
 
 apply from: 'https://raw.github.com/chrisbanes/gradle-mvn-push/master/gradle-mvn-push.gradle'

@@ -1,5 +1,6 @@
 package com.bingzer.android.cloudy;
 
+import android.database.Cursor;
 import android.test.AndroidTestCase;
 
 import com.bingzer.android.dbv.DbQuery;
@@ -112,7 +113,10 @@ public class SyncEntityTest extends AndroidTestCase {
 
     public void test_load_cursor(){
         Person person = new Person();
-        person.load(db.get("Person").select("Name = ?", "Person2").query());
+        Cursor cursor = db.get("Person").select("Name = ?", "Person2").query();
+        if(cursor.moveToNext())
+            person.load(cursor);
+        cursor.close();
 
         assertEquals("Person2", person.getName());
         assertEquals(2, person.getAge());

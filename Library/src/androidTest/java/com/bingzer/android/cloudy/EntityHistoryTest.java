@@ -12,7 +12,6 @@ import com.example.Person;
 import com.example.TestDbBuilder;
 
 public class EntityHistoryTest extends AndroidTestCase {
-    IDatabase db;
     ITable historyTable;
 
     @Override

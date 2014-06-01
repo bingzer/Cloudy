@@ -17,10 +17,6 @@ final class EntityHistory extends SyncEntity implements IEntityHistory {
 
     ////////////////////////////////////////////////////////////////////////////////////
 
-    private EntityHistory(){
-        super();
-    }
-
     EntityHistory(IEnvironment environment){
         super(environment);
     }
@@ -123,7 +119,7 @@ final class EntityHistory extends SyncEntity implements IEntityHistory {
     public static void insert(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        EntityHistory history = new EntityHistory();
+        EntityHistory history = new EntityHistory(entity.getEnvironment());
         history.setEntityAction(INSERT);
         history.setEntityName(entity.getTableName());
         history.setEntitySyncId(entity.getSyncId());
@@ -135,7 +131,7 @@ final class EntityHistory extends SyncEntity implements IEntityHistory {
     public static void delete(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        EntityHistory history = new EntityHistory();
+        EntityHistory history = new EntityHistory(entity.getEnvironment());
         history.setEntityAction(DELETE);
         history.setEntityName(entity.getTableName());
         history.setEntitySyncId(entity.getSyncId());
@@ -147,7 +143,7 @@ final class EntityHistory extends SyncEntity implements IEntityHistory {
     public static void update(ISyncEntity entity){
         if(entity instanceof ISystemEntity) return;
 
-        EntityHistory history = new EntityHistory();
+        EntityHistory history = new EntityHistory(entity.getEnvironment());
         history.setEntityAction(UPDATE);
         history.setEntityName(entity.getTableName());
         history.setEntitySyncId(entity.getSyncId());
