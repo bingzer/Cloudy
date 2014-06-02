@@ -112,8 +112,8 @@ public class SQLiteSyncManager implements ISyncManager {
         LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
         remoteDbFile.download(dbLocalFile);
 
-        IDatabase db = DbQuery.getDatabase(local.getDatabase().getName());
-        db.open(local.getDatabase().getVersion(), dbLocalFile.getFile().getAbsolutePath(), new SQLiteBuilder.WithoutModeling(context));
+        IDatabase db = DbQuery.getDatabase(local.getDatabase().getName() + "-remote");
+        db.open(local.getDatabase().getVersion(), dbLocalFile.getFile().getAbsolutePath(), local.getDatabase().getBuilder());
 
         return new Environment(db);
     }
