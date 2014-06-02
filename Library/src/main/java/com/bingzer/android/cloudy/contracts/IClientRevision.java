@@ -1,7 +1,7 @@
 package com.bingzer.android.cloudy.contracts;
 
-public interface IClientSyncInfo extends ISystemEntity {
-    String TABLE_NAME = "CloudyClient";
+public interface IClientRevision extends ISystemEntity {
+    String TABLE_NAME = "ClientRevision";
 
     void setClientId(long clientId);
 

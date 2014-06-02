@@ -1,14 +1,10 @@
 package com.bingzer.android.cloudy.contracts;
 
-import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.RemoteFile;
 
 public interface ISyncManager {
 
-    /**
-     * Returns the client id
-     */
-    long getClientId();
+    IClientRevision getClientRevision();
 
     /**
      * Returns the Root
@@ -17,9 +13,8 @@ public interface ISyncManager {
 
     /**
      * Sync database
-     * @param local the local database
      * @param dbRemoteFile dbRemote file
      */
-    void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile);
+    void syncDatabase(RemoteFile dbRemoteFile);
 
 }

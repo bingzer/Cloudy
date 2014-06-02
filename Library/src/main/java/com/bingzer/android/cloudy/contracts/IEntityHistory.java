@@ -2,7 +2,7 @@ package com.bingzer.android.cloudy.contracts;
 
 public interface IEntityHistory extends ISystemEntity {
 
-    String TABLE_NAME = "CloudyHistory";
+    String TABLE_NAME = "EntityHistory";
 
     int INSERT = 0;
     int DELETE = 1;

@@ -4,6 +4,7 @@ import android.test.AndroidTestCase;
 
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
+import com.bingzer.android.cloudy.contracts.IClientRevision;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.dbv.DbQuery;
@@ -16,6 +17,7 @@ import com.example.TestDbBuilder;
 import java.io.File;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class SyncProviderTest extends AndroidTestCase {
 
@@ -36,6 +38,7 @@ public class SyncProviderTest extends AndroidTestCase {
         local = new Environment(localDb);
         remote = new Environment(remoteDb);
         ISyncManager manager = mock(ISyncManager.class);
+        when(manager.getClientRevision()).thenReturn(mock(IClientRevision.class));
 
         provider = new SyncProvider(manager, local, remote);
 

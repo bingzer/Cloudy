@@ -5,8 +5,7 @@ import android.test.AndroidTestCase;
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientSyncInfo;
-import com.bingzer.android.cloudy.contracts.IEntityHistory;
+import com.bingzer.android.cloudy.contracts.IClientRevision;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
@@ -42,7 +41,7 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         remoteRoot = storageProvider.create("remoteRoot");
         remoteDbFile = storageProvider.create(remoteRoot, "remoteDb", new LocalFile(new File(dbSample.getPath())));
 
-        manager = new SQLiteSyncManager(getContext(), remoteRoot);
+        manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot);
         clientFile = new File(getContext().getFilesDir(), "Cloudy.Client");
     }
 
@@ -65,15 +64,19 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
     }
 
     public void test_getClientId(){
-        assertTrue(manager.getClientId() != -1);
+        assertTrue(manager.getClientRevision().getClientId() != -1);
         assertTrue(clientFile.exists());
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
     public void test_sync(){
+        deleteLock();
+
         // TODO: check before and after sync
         IEnvironment local = Environment.getLocalEnvironment();
+        local.getDatabase().open(1, new TestDbBuilder(getContext()));
+
         new Person(local, "Person1", 1).save();
         new Person(local, "Person2", 2).save();
         new Person(local, "Person3", 3).save();
@@ -85,16 +88,13 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         //assertEquals(5, local.getDatabase().get("Person").count());
         //assertEquals(0, remote.getDatabase().get("Person").count());
 
-        manager.syncDatabase(local, remoteDbFile);
+        manager.syncDatabase(remoteDbFile);
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
     public void test_acquireLock() throws Exception{
-        for(RemoteFile child : remoteRoot.list()){
-            if(child.getName().endsWith(".lock"))
-                child.delete();
-        }
+        deleteLock();
 
         String name = Timespan.now() + ".lock";
         File f = new File(getContext().getFilesDir(), name);
@@ -106,16 +106,11 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         lockFile.delete();
 
         assertTrue(manager.acquireLock());
-
-        for(RemoteFile child : remoteRoot.list()){
-            if(child.getName().endsWith(".lock"))
-                child.delete();
-        }
+        deleteLock();
     }
 
     public void test_shouldNotSync() throws Exception {
-        IEnvironment local = Environment.getLocalEnvironment();
-        manager.syncDatabase(local, remoteDbFile);
+        manager.syncDatabase(remoteDbFile);
 
         long existingTimestamp = 0;
         for(RemoteFile child : remoteRoot.list()){
@@ -128,11 +123,11 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         // we should not sync
         try{
             Environment.getLocalEnvironment().getDatabase().open(1, new TestDbBuilder(getContext()));
-            IClientSyncInfo clientSyncInfo = manager.getClientSyncInfo();
+            IClientRevision clientSyncInfo = manager.getClientRevision();
             clientSyncInfo.setRevision(existingTimestamp);
             assertTrue(clientSyncInfo.save());
 
-            manager.syncDatabase(local, remoteDbFile);
+            manager.syncDatabase(remoteDbFile);
             fail("Should throw syncexception");
         }
         catch (SyncException e){
@@ -141,8 +136,19 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
 
         }
 
+        deleteRevision();
+    }
+
+    private void deleteRevision(){
         for(RemoteFile child : remoteRoot.list()){
             if(child.getName().endsWith(".revision"))
+                child.delete();
+        }
+    }
+
+    private void deleteLock(){
+        for(RemoteFile child : remoteRoot.list()){
+            if(child.getName().endsWith(".lock"))
                 child.delete();
         }
     }

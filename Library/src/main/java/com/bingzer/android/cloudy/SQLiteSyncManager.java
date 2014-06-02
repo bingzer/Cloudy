@@ -4,9 +4,8 @@ import android.content.Context;
 
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
-import com.bingzer.android.Randomite;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientSyncInfo;
+import com.bingzer.android.cloudy.contracts.IClientRevision;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.DbQuery;
@@ -16,37 +15,32 @@ import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-
-import static com.bingzer.android.Stringify.isNullOrEmpty;
 
 public class SQLiteSyncManager implements ISyncManager {
 
     private RemoteFile root;
     private List<RemoteFile> childrenOfRoot;
     private Context context;
-    private ClientInfo clientInfo;
+    private ClientRevision localRevision;
 
     private RemoteFile revisionFile;   // 1321346465.revision
     private RemoteFile lockFile;       // 1231465466.lock
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SQLiteSyncManager(Context context, RemoteFile root){
+    public SQLiteSyncManager(Context context, IEnvironment local, RemoteFile root){
         if(!root.isDirectory()) throw new SyncException("root must be a directory");
         this.root = root;
         this.context = context.getApplicationContext();
-        this.clientInfo = new ClientInfo(context);
+        this.localRevision = new ClientRevision(context, local);
     }
 
     @Override
-    public long getClientId() {
-        return clientInfo.getClientId();
+    public IClientRevision getClientRevision() {
+        return localRevision;
     }
 
     @Override
@@ -55,19 +49,18 @@ public class SQLiteSyncManager implements ISyncManager {
     }
 
     @Override
-    public void syncDatabase(IEnvironment local, RemoteFile dbRemoteFile) {
-        clientInfo.setEnvironment(local);
+    public void syncDatabase(RemoteFile dbRemoteFile) {
         childrenOfRoot = root.list();
         ISyncProvider syncProvider = null;
         try{
-            if(!shouldSync(clientInfo.getClientSyncInfo().getRevision())) throw new SyncException("Everything is up-to-date");
+            if(!shouldSync(localRevision.getRevision())) throw new SyncException("Everything is up-to-date");
             if(!acquireLock()) throw new SyncException("Another client is syncing");
             ensureRevisionExists(childrenOfRoot);
 
-            IEnvironment remote = clientInfo.createRemoteEnvironment(dbRemoteFile);
+            IEnvironment remote = createRemoteEnvironment(dbRemoteFile);
 
-            syncProvider = new SyncProvider(this, local, remote);
-            long newTimestamp = syncProvider.sync(clientInfo.getClientSyncInfo().getRevision());
+            syncProvider = new SyncProvider(this, localRevision.getEnvironment(), remote);
+            long newTimestamp = syncProvider.sync(localRevision.getRevision());
 
             if(!revisionFile.rename(newTimestamp + ".revision"))
                 throw new SyncException("Failed to commit new revision");
@@ -81,10 +74,6 @@ public class SQLiteSyncManager implements ISyncManager {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    IClientSyncInfo getClientSyncInfo(){
-        return clientInfo.getClientSyncInfo();
-    }
 
     RemoteFile ensureRevisionExists(List<RemoteFile> childrenOfRoot){
         if(childrenOfRoot == null)
@@ -172,87 +161,16 @@ public class SQLiteSyncManager implements ISyncManager {
         return true;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    private IEnvironment createRemoteEnvironment(RemoteFile remoteDbFile){
+        IEnvironment local = localRevision.getEnvironment();
+        IDatabase localDb = local.getDatabase();
+        LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
+        remoteDbFile.download(dbLocalFile);
 
-    protected static class ClientInfo {
+        IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
+        db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
 
-        private static long INVALID_CLIENT_ID = -1;
-        private long clientId = INVALID_CLIENT_ID;
-        private final File clientFile;
-        private IEnvironment environment;
-        private Context context;
-
-        public ClientInfo(Context context){
-            this.context = context;
-            clientFile = new File(context.getFilesDir(), "Cloudy.Client");
-        }
-
-        void setEnvironment(IEnvironment environment){
-            this.environment = environment;
-        }
-
-        long getClientId() {
-            if(clientId == INVALID_CLIENT_ID){
-                try {
-                    clientId = generateUniqueId();
-                }
-                catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            return clientId;
-        }
-
-        IClientSyncInfo getClientSyncInfo(){
-            IClientSyncInfo clientSyncInfo = ClientSyncInfo.getClient(environment, getClientId());
-            clientSyncInfo.setClientId(getClientId());
-            clientSyncInfo.save();
-            return clientSyncInfo;
-        }
-
-        private long generateUniqueId() throws IOException{
-            if(clientFile.exists()){
-                // read from file
-                return readClientFile();
-            }
-            else{
-                return writeClientFile();
-            }
-        }
-
-        private long readClientFile() throws IOException{
-            BufferedReader br = new BufferedReader(new FileReader(clientFile));
-            String input = br.readLine();
-            Path.safeClose(br);
-
-            long uniqueId = INVALID_CLIENT_ID;
-            if(!isNullOrEmpty(input)){
-                uniqueId = Parser.parseLong(input, INVALID_CLIENT_ID);
-                if(uniqueId == INVALID_CLIENT_ID)
-                    throw new IOException("Not a valid ClientId: " + input);
-            }
-            return uniqueId;
-        }
-
-        private long writeClientFile() throws IOException {
-            Long uniqueId = Randomite.uniqueId();
-
-            FileWriter fw = new FileWriter(clientFile);
-            fw.write(uniqueId.toString());
-            fw.close();
-
-            return readClientFile();
-        }
-
-        private IEnvironment createRemoteEnvironment(RemoteFile remoteDbFile){
-            LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
-            remoteDbFile.download(dbLocalFile);
-
-            IDatabase db = DbQuery.getDatabase(environment.getDatabase().getName() + "-remote");
-            db.open(environment.getDatabase().getVersion(), dbLocalFile.getFile().getAbsolutePath(), environment.getDatabase().getBuilder());
-
-            return new Environment(db);
-        }
+        return new Environment(db);
     }
+
 }
