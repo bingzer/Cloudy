@@ -112,6 +112,15 @@ public class SyncProviderTest extends AndroidTestCase {
         assertEquals(5, local.getDatabase().get("Person").count());
     }
 
+    public void test_sync_close() throws Exception {
+        File remoteDb = new File(remote.getDatabase().getPath());
+        provider.sync(syncTimestamp);
+        assertTrue(remoteDb.exists());
+
+        provider.cleanup();
+        assertFalse(remoteDb.exists());
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////////
 
 }
