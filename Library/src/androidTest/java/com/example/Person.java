@@ -26,9 +26,14 @@ public class Person extends SyncEntity {
     }
 
     public Person(IEnvironment environment, String name, int age){
+        this(environment, name, age, null);
+    }
+
+    public Person(IEnvironment environment, String name, int age, String picture){
         super(environment);
         this.name = name;
         this.age = age;
+        this.picture = picture;
     }
 
     public int getAge() {

@@ -2,6 +2,7 @@ package com.bingzer.android.cloudy;
 
 import android.test.AndroidTestCase;
 
+import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
@@ -12,7 +13,7 @@ import com.bingzer.android.dbv.IEnvironment;
 import com.example.Person;
 import com.example.TestDbBuilder;
 
-import java.util.concurrent.CountDownLatch;
+import java.io.File;
 
 import static org.mockito.Mockito.mock;
 
@@ -22,9 +23,11 @@ public class SyncProviderTest extends AndroidTestCase {
     IEnvironment remote;
     IEnvironment local;
     long syncTimestamp;
+    File image1, image2, image3, image4, image5;
 
     @Override
     protected void setUp() throws Exception {
+        syncTimestamp = Timespan.now();
         IDatabase localDb = DbQuery.getDatabase("SyncProviderTest-Local");
         localDb.open(1, new TestDbBuilder(getContext()));
         IDatabase remoteDb = DbQuery.getDatabase("SyncProviderTest-Remote");
@@ -36,7 +39,25 @@ public class SyncProviderTest extends AndroidTestCase {
 
         provider = new SyncProvider(manager, local, remote);
 
-        syncTimestamp = Timespan.now();
+        // we need to extract all images from assets to files dir
+        File imageDir = new File(getContext().getFilesDir(), "images");
+        Path.safeCreateDir(imageDir);
+
+        image1 = new File(imageDir, "01.png");
+        if(!image1.exists())
+            Path.copyFile(getContext().getAssets().open("01.png"), image1);
+        image2 = new File(imageDir, "02.png");
+        if(!image2.exists())
+            Path.copyFile(getContext().getAssets().open("02.png"), image2);
+        image3 = new File(imageDir, "03.png");
+        if(!image3.exists())
+            Path.copyFile(getContext().getAssets().open("03.png"), image3);
+        image4 = new File(imageDir, "04.png");
+        if(!image4.exists())
+            Path.copyFile(getContext().getAssets().open("04.png"), image4);
+        image5 = new File(imageDir, "05.png");
+        if(!image5.exists())
+            Path.copyFile(getContext().getAssets().open("05.png"), image5);
     }
 
     @Override
@@ -90,5 +111,7 @@ public class SyncProviderTest extends AndroidTestCase {
         assertEquals(5, remote.getDatabase().get("Person").count());
         assertEquals(5, local.getDatabase().get("Person").count());
     }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////
 
 }
