@@ -2,6 +2,7 @@ package com.bingzer.android.cloudy;
 
 import com.bingzer.android.cloudy.contracts.IClientSyncInfo;
 import com.bingzer.android.dbv.Delegate;
+import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IEntity;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.ITable;
@@ -9,7 +10,7 @@ import com.bingzer.android.dbv.ITable;
 final class ClientSyncInfo extends SyncEntity implements IClientSyncInfo {
 
     private long clientId;
-    private long lastSync;
+    private long revision;
 
     ClientSyncInfo(IEnvironment environment){
         super(environment);
@@ -27,13 +28,13 @@ final class ClientSyncInfo extends SyncEntity implements IClientSyncInfo {
     }
 
     @Override
-    public long getLastSync() {
-        return lastSync;
+    public long getRevision() {
+        return revision;
     }
 
     @Override
-    public void setLastSync(long lastSync) {
-        this.lastSync = lastSync;
+    public void setRevision(long revision) {
+        this.revision = revision;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -60,15 +61,15 @@ final class ClientSyncInfo extends SyncEntity implements IClientSyncInfo {
                 return getClientId();
             }
         });
-        mapper.map("LastSync", new Delegate.TypeLong() {
+        mapper.map("Revision", new Delegate.TypeLong() {
             @Override
             public void set(Long l) {
-                setLastSync(l);
+                setRevision(l);
             }
 
             @Override
             public Long get() {
-                return getLastSync();
+                return getRevision();
             }
         });
     }
@@ -88,4 +89,5 @@ final class ClientSyncInfo extends SyncEntity implements IClientSyncInfo {
 
         return syncData;
     }
+
 }

@@ -26,8 +26,8 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
         modeling.add(IClientSyncInfo.TABLE_NAME)
                 .addPrimaryKey("Id")
                 .addInteger("SyncId")
-                .addInteger("ClientId")
-                .addInteger("LastSync")
+                .addInteger("ClientId", "unique")
+                .addInteger("Revision")
                 .index("Id", "SyncId")
                 .ifNotExists();
 

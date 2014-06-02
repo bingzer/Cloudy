@@ -5,6 +5,9 @@ import com.bingzer.android.driven.RemoteFile;
 
 public interface ISyncManager {
 
+    /**
+     * Returns the client id
+     */
     long getClientId();
 
     /**

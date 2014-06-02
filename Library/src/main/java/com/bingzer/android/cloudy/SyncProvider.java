@@ -35,7 +35,7 @@ class SyncProvider implements ISyncProvider {
     }
 
     @Override
-    public void sync(long timestamp) {
+    public long sync(long timestamp) {
         Log.i(TAG, "Sync starting. LastSync: " + timestamp);
         long now = Timespan.now();
         TimeRange range = new TimeRange(timestamp, now);
@@ -52,6 +52,17 @@ class SyncProvider implements ISyncProvider {
         // update client data
         syncClient(now, local);
         syncClient(now, remote);
+
+        return now;
+    }
+
+    @Override
+    public void cleanup() {
+        File db = new File(remote.getDatabase().getPath());
+        // cleanup
+        remote.getDatabase().close();
+        if(!db.delete())
+            Log.e(TAG, "Cleanup() - failed to delete remote db");
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +100,7 @@ class SyncProvider implements ISyncProvider {
 
     private void syncClient(long timestamp, final IEnvironment source){
         IClientSyncInfo client = ClientSyncInfo.getClient(source, manager.getClientId());
-        client.setLastSync(timestamp);
+        client.setRevision(timestamp);
         client.save();
     }
 
