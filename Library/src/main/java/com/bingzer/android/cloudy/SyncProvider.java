@@ -129,9 +129,12 @@ class SyncProvider implements ISyncProvider {
                 break;
             case IEntityHistory.UPDATE:
                 sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-                destinationTable.update(syncEntity);
 
-                update(streamType, syncEntity);
+                ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
+                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(destEntity);
+
+                update(streamType, syncEntity, destEntity);
+                destinationTable.update(syncEntity);
                 break;
         }
 
@@ -164,15 +167,15 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void update(int streamType, ISyncEntity entity){
+    private void update(int streamType, ISyncEntity srcEntity, ISyncEntity destEntity){
         switch (streamType){
             default:
                 throw new SyncException("Unknown stream type: " + streamType);
             case UPSTREAM:
-                updateUpstream(entity);
+                updateUpstream(srcEntity, destEntity);
                 break;
             case DOWNSTREAM:
-                updateDownstream(entity);
+                updateDownstream(srcEntity, destEntity);
                 break;
         }
     }
@@ -230,32 +233,40 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void updateUpstream(ISyncEntity entity){
-        if(hasLocalFiles(entity)){
-            RemoteFile remoteDir = getRemoteDirectory(entity);
+    private void updateUpstream(ISyncEntity srcEntity, ISyncEntity destEntity){
+        if(hasLocalFiles(destEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(destEntity);
 
-            for(RemoteFile child : remoteDir.list()){
-                // delete everything that starts with sync id
-                if(child.getName().startsWith("" + entity.getSyncId())){
-                    child.delete();
-                }
+            for(File file : destEntity.getLocalFiles()){
+                String filename = createRemoteFileNameForLocalFile(destEntity, file);
+                remoteDir.get(filename).delete();
             }
+        }
 
-            for(File file : entity.getLocalFiles()){
+        if(hasLocalFiles(srcEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(srcEntity);
+
+            for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
+                String filename = createRemoteFileNameForLocalFile(srcEntity, file);
                 remoteDir.create(filename, localFile);
             }
         }
     }
 
-    private void updateDownstream(ISyncEntity entity){
-        if(hasLocalFiles(entity)){
-            RemoteFile remoteDir = getRemoteDirectory(entity);
+    private void updateDownstream(ISyncEntity srcEntity, ISyncEntity destEntity){
+        if(hasLocalFiles(destEntity)){
+            for(File file : destEntity.getLocalFiles()){
+                file.delete();
+            }
+        }
 
-            for(File file : entity.getLocalFiles()){
+        if(hasLocalFiles(srcEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(srcEntity);
+
+            for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
+                String filename = createRemoteFileNameForLocalFile(srcEntity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
                 remoteFile.download(localFile);
             }

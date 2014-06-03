@@ -10,7 +10,7 @@ import java.io.File;
 
 public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
 
-    private long syncId = Randomite.uniqueId();
+    protected long syncId = Randomite.uniqueId();
 
     //////////////////////////////////////////////////////////////////////////////////////////
 

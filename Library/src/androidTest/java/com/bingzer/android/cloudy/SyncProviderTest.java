@@ -393,15 +393,20 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         ////////////////////////////////////////////////////////////////////////////////
         syncTimestamp = Timespan.now();
         // change all pictures to image1
+        person1.setName(person1.getName() + "-Edited");
         person1.setPicture(image1.getAbsolutePath());
         person1.save();
+        person2.setName(person2.getName() + "-Edited");
         person2.setPicture(image1.getAbsolutePath());
         person2.save();
+        person3.setName(person3.getName() + "-Edited");
         person3.setPicture(image1.getAbsolutePath());
         person3.save();
+        person4.setName(person4.getName() + "-Edited");
         person4.setPicture(image1.getAbsolutePath());
         person4.save();
-        person5.setPicture(image1.getAbsolutePath());
+        person5.setName(person5.getName() + "-Edited");
+        person5.setPicture(null);
         person5.save();
 
         assertEquals(10, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
@@ -418,18 +423,119 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
 
         int counter = 0;
         // make sure files exists
-        Cursor cursor = local.getDatabase().get("Person").select().query();
+        Cursor cursor = remote.getDatabase().get("Person").select().query();
         while(cursor.moveToNext()){
-            Person p = new Person(local);
+            ++counter;
+
+            Person p = new Person(remote);
             p.load(cursor);
 
-            String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
-            assertNotNull(remoteRoot.get("Person").get(remoteFilename));
-            ++counter;
+            if(p.getLocalFiles() != null){
+                String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+
+                assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            }
+            else{
+                // person #5 is updated with no image
+                assertTrue(counter == 5);
+            }
+            assertEquals("Person" + counter + "-Edited", p.getName());
         }
         cursor.close();
         assertEquals(5, counter);
     }
 
+    public void test_sync_update_remoteToLocal() throws Exception {
+        Person person1 = new Person(local, "Person1", 1, image1.getAbsolutePath());
+        person1.save();
+        Person person2 = new Person(local, "Person2", 2, image2.getAbsolutePath());
+        person2.save();
+        Person person3 = new Person(local, "Person3", 3, image3.getAbsolutePath());
+        person3.save();
+        Person person4 = new Person(local, "Person4", 4, image4.getAbsolutePath());
+        person4.save();
+        Person person5 = new Person(local, "Person5", 5, image5.getAbsolutePath());
+        person5.save();
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(0, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(0, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+
+        ////////////////////////////////////////////////////////////////////////////////
+        syncTimestamp = Timespan.now();
+        // change all pictures to image1
+        person1 = new Person(remote, person1.getId(), person1.getSyncId(), "Person1-Edited", 10, image1.getAbsolutePath());
+        person1.save();
+        person2 = new Person(remote, person2.getId(), person2.getSyncId(), "Person2-Edited", 20, image1.getAbsolutePath());
+        person2.save();
+        person3 = new Person(remote, person3.getId(), person3.getSyncId(), "Person3-Edited", 30, image1.getAbsolutePath());
+        person3.save();
+        person4 = new Person(remote, person4.getId(), person4.getSyncId(), "Person4-Edited", 40, image1.getAbsolutePath());
+        person4.save();
+        person5 = new Person(remote, person5.getId(), person5.getSyncId(), "Person5-Edited", 50, null);
+        person5.save();
+
+        RemoteFile remoteDir = remoteRoot.get("Person");
+        if(remoteDir.get(person1.getSyncId() + "." + image1.getName()) == null)
+            remoteDir.create(person1.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+        if(remoteDir.get(person2.getSyncId() + "." + image1.getName()) == null)
+            remoteDir.create(person2.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+        if(remoteDir.get(person3.getSyncId() + "." + image1.getName()) == null)
+            remoteDir.create(person3.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+        if(remoteDir.get(person4.getSyncId() + "." + image1.getName()) == null)
+            remoteDir.create(person4.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+        if(remoteDir.get(person5.getSyncId() + "." + image1.getName()) == null)
+            remoteDir.create(person5.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(10, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(10, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(10, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+
+        int counter = 0;
+        // make sure files exists
+        Cursor cursor = local.getDatabase().get("Person").select().query();
+        while(cursor.moveToNext()){
+            ++counter;
+
+            Person p = new Person(local);
+            p.load(cursor);
+
+            if(p.getLocalFiles() != null){
+                String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+
+                assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            }
+            else{
+                // person# 5 has no image
+                assertEquals(5, counter);
+            }
+            assertEquals("Person" + counter + "-Edited", p.getName());
+            assertEquals(counter * 10, p.getAge());
+        }
+        cursor.close();
+        assertEquals(5, counter);
+
+        assertTrue(image1.exists());
+        assertFalse(image2.exists());
+        assertFalse(image3.exists());
+        assertFalse(image4.exists());
+        assertFalse(image5.exists());
+    }
 
 }
