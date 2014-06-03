@@ -365,4 +365,71 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
 
     /////////////////////////////////////////////////////////////////////////////////////////////
 
+
+    public void test_sync_update_localToRemote() throws Exception {
+        Person person1 = new Person(local, "Person1", 1, image1.getAbsolutePath());
+        person1.save();
+        Person person2 = new Person(local, "Person2", 2, image2.getAbsolutePath());
+        person2.save();
+        Person person3 = new Person(local, "Person3", 3, image3.getAbsolutePath());
+        person3.save();
+        Person person4 = new Person(local, "Person4", 4, image4.getAbsolutePath());
+        person4.save();
+        Person person5 = new Person(local, "Person5", 5, image5.getAbsolutePath());
+        person5.save();
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(0, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(0, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+
+        ////////////////////////////////////////////////////////////////////////////////
+        syncTimestamp = Timespan.now();
+        // change all pictures to image1
+        person1.setPicture(image1.getAbsolutePath());
+        person1.save();
+        person2.setPicture(image1.getAbsolutePath());
+        person2.save();
+        person3.setPicture(image1.getAbsolutePath());
+        person3.save();
+        person4.setPicture(image1.getAbsolutePath());
+        person4.save();
+        person5.setPicture(image1.getAbsolutePath());
+        person5.save();
+
+        assertEquals(10, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(10, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(10, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+
+        int counter = 0;
+        // make sure files exists
+        Cursor cursor = local.getDatabase().get("Person").select().query();
+        while(cursor.moveToNext()){
+            Person p = new Person(local);
+            p.load(cursor);
+
+            String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+            assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            ++counter;
+        }
+        cursor.close();
+        assertEquals(5, counter);
+    }
+
+
 }

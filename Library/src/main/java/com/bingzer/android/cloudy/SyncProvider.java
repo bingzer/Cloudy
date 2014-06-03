@@ -233,11 +233,17 @@ class SyncProvider implements ISyncProvider {
         if(hasLocalFiles(entity)){
             RemoteFile remoteDir = getRemoteDirectory(entity);
 
+            for(RemoteFile child : remoteDir.list()){
+                // delete everything that starts with sync id
+                if(child.getName().startsWith("" + entity.getSyncId())){
+                    child.delete();
+                }
+            }
+
             for(File file : entity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
                 String filename = createRemoteFileNameForLocalFile(entity, file);
-                RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.upload(localFile);
+                remoteDir.create(filename, localFile);
             }
         }
     }
