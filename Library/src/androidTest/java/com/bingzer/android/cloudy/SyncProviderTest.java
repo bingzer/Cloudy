@@ -83,7 +83,7 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
 
     /////////////////////////////////////////////////////////////////////////////////////////////
 
-    public void test_sync_localToRemote() throws Exception {
+    public void test_sync_create_localToRemote() throws Exception {
         new Person(local, "Person1", 1).save();
         new Person(local, "Person2", 2).save();
         new Person(local, "Person3", 3).save();
@@ -103,7 +103,32 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         assertEquals(5, remote.getDatabase().get("Person").count());
     }
 
-    public void test_sync_RemoteToLocal() throws Exception {
+    public void test_sync_delete_localToRemote() throws Exception {
+        test_sync_create_localToRemote();
+        syncTimestamp = Timespan.now();
+
+        Cursor cursor = local.getDatabase().get("Person").select("Name = ?", "Person2").query();
+        Person p = new Person(local);
+        if(cursor.moveToNext()) p.load(cursor);
+        cursor.close();
+        assertEquals("Person2", p.getName());
+        p.delete();
+        assertFalse(local.getDatabase().get("Person").has("Name = ?", "Person2"));
+
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+    }
+
+    public void test_sync_create_remoteToLocal() throws Exception {
         new Person(remote, "Person1", 1).save();
         new Person(remote, "Person2", 2).save();
         new Person(remote, "Person3", 3).save();
@@ -123,7 +148,32 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         assertEquals(5, local.getDatabase().get("Person").count());
     }
 
-    public void test_sync_localToRemote_withImages() throws Exception {
+    public void test_sync_delete_remoteToLocal() throws Exception {
+        test_sync_create_remoteToLocal();
+        syncTimestamp = Timespan.now();
+
+        Cursor cursor = remote.getDatabase().get("Person").select("Name = ?", "Person2").query();
+        Person p = new Person(remote);
+        if(cursor.moveToNext()) p.load(cursor);
+        cursor.close();
+        assertEquals("Person2", p.getName());
+        p.delete();
+        assertFalse(remote.getDatabase().get("Person").has("Name = ?", "Person2"));
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+    }
+
+    public void test_sync_create_localToRemote_images() throws Exception {
         if(remoteRoot.get("Person") != null){
             for(RemoteFile child : remoteRoot.get("Person").list()){
                 child.delete();
@@ -161,13 +211,52 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         }
         cursor.close();
         assertEquals(5, counter);
+    }
+
+    public void test_sync_delete_localToRemote_images() throws Exception {
+        test_sync_create_localToRemote_images();
+        syncTimestamp = Timespan.now();
+
+        Cursor cursor = local.getDatabase().get("Person").select("Name = ?", "Person2").query();
+        Person p = new Person(local);
+        if(cursor.moveToNext()) p.load(cursor);
+        cursor.close();
+        assertEquals("Person2", p.getName());
+        p.delete();
+        assertFalse(local.getDatabase().get("Person").has("Name = ?", "Person2"));
+
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+
+        // make sure files exists
+        int counter = 0;
+        cursor = local.getDatabase().get("Person").select().query();
+        while(cursor.moveToNext()){
+            p = new Person(local);
+            p.load(cursor);
+
+            String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+            assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            ++counter;
+        }
+        cursor.close();
+        assertEquals(4, counter);
 
         for(RemoteFile child : remoteRoot.get("Person").list()){
             child.delete();
         }
     }
 
-    public void test_sync_RemoteToLocal_WithImages() throws Exception {
+    public void test_sync_create_remoteToLocal_images() throws Exception {
         Person person1 = new Person(remote, "Person1", 1, image1.getAbsolutePath());
         person1.save();
         Person person2 = new Person(remote, "Person2", 2, image2.getAbsolutePath());
@@ -203,7 +292,9 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         assertEquals(5, remote.getDatabase().get("Person").count());
         assertEquals(0, local.getDatabase().get("Person").count());
 
+        ///////////////////////////////
         provider.sync(syncTimestamp);
+        ///////////////////////////////
 
         assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
         assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
@@ -226,6 +317,43 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         // delete files on disk
         assertTrue(image1.exists());
         assertTrue(image2.exists());
+        assertTrue(image3.exists());
+        assertTrue(image4.exists());
+        assertTrue(image5.exists());
+
+        for(RemoteFile child : remoteRoot.get("Person").list()){
+            child.delete();
+        }
+    }
+
+
+    public void test_sync_delete_remoteToLocal_images() throws Exception {
+        test_sync_create_remoteToLocal_images();
+        syncTimestamp = Timespan.now();
+
+        Cursor cursor = remote.getDatabase().get("Person").select("Name = ?", "Person2").query();
+        Person p = new Person(remote);
+        if(cursor.moveToNext()) p.load(cursor);
+        cursor.close();
+        assertEquals("Person2", p.getName());
+        p.delete();
+        assertFalse(remote.getDatabase().get("Person").has("Name = ?", "Person2"));
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+        ///////////
+        provider.sync(syncTimestamp);
+        //////////
+        assertEquals(6, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(6, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(4, local.getDatabase().get("Person").count());
+        assertEquals(4, remote.getDatabase().get("Person").count());
+
+        // make sure files exists
+        assertTrue(image1.exists());
+        assertFalse(image2.exists());
         assertTrue(image3.exists());
         assertTrue(image4.exists());
         assertTrue(image5.exists());

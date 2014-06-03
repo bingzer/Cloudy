@@ -121,7 +121,8 @@ class SyncProvider implements ISyncProvider {
                 create(streamType, syncEntity);
                 break;
             case IEntityHistory.DELETE:
-                destinationTable.delete("SyncID = ?", syncHistory.getEntitySyncId());
+                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
+                destinationTable.delete("SyncId = ?", syncHistory.getEntitySyncId());
 
                 delete(streamType, syncEntity);
                 break;
