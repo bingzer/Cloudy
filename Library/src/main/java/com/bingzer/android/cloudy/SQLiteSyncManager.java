@@ -28,6 +28,7 @@ public class SQLiteSyncManager implements ISyncManager {
     private List<RemoteFile> childrenOfRoot;
     private Context context;
     private IEnvironment local;
+    private long lockTimeout;
 
     private RemoteFile revisionFile;   // 1321346465.revision
     private RemoteFile lockFile;       // 1231465466.lock
@@ -39,7 +40,9 @@ public class SQLiteSyncManager implements ISyncManager {
         this.root = root;
         this.context = context.getApplicationContext();
         this.local = local;
-        seedConfigs(local);
+        LocalConfiguration.seedConfigs(local);
+
+        lockTimeout = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_LOCK_TIMEOUT).getValueAsLong();
     }
 
     @Override
@@ -143,7 +146,7 @@ public class SQLiteSyncManager implements ISyncManager {
 
         if(lockFile != null){
             long timestamp = Parser.parseLong(Path.stripExtension(lockFile.getName()), -1);
-            return Math.abs(Timespan.now() - timestamp) > Timespan.MINUTES_30;
+            return Math.abs(Timespan.now() - timestamp) > lockTimeout;
         }
         else{
             ensureLockExists(childrenOfRoot);
@@ -170,33 +173,6 @@ public class SQLiteSyncManager implements ISyncManager {
         db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
 
         return new Environment(db);
-    }
-
-    /**
-     * Seed all configs if it does not exists
-     */
-    private void seedConfigs(IEnvironment env){
-        ILocalConfiguration config;
-        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_CLIENTID)){
-            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_CLIENTID);
-            config.setValue(Randomite.uniqueId());
-            config.save();
-            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_CLIENTID + " with value: " + config.getValue());
-        }
-
-        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT)){
-            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT);
-            config.setValue(Timespan.MINUTES_30);
-            config.save();
-            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_LOCK_TIMEOUT + " with value: " + config.getValue());
-        }
-
-        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_REVISION)){
-            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_REVISION);
-            config.setValue(0);
-            config.save();
-            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_LOCK_TIMEOUT + " with value: " + config.getValue());
-        }
     }
 
 }

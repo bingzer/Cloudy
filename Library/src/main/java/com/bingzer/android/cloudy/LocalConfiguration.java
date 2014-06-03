@@ -1,6 +1,10 @@
 package com.bingzer.android.cloudy;
 
+import android.util.Log;
+
 import com.bingzer.android.Parser;
+import com.bingzer.android.Randomite;
+import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.IEntity;
@@ -9,9 +13,12 @@ import com.bingzer.android.dbv.ITable;
 
 class LocalConfiguration extends SyncEntity implements ILocalConfiguration {
 
+    static final String TAG = "LocalConfiguration";
     static final String SETTING_REVISION = "Revision";
-    static final String SETTING_LOCK_TIMEOUT = "Timeout";
+    static final String SETTING_LOCK_TIMEOUT = "LockTimeout";
     static final String SETTING_CLIENTID = "ClientId";
+    static final String SETTING_VERSION = "Version";
+    static final String SETTING_CREATED = "CreationDate";
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -137,6 +144,47 @@ class LocalConfiguration extends SyncEntity implements ILocalConfiguration {
             config.save();
 
         return config;
+    }
+
+    /**
+     * Seed all configs if it does not exists
+     */
+    public static void seedConfigs(IEnvironment env){
+        ILocalConfiguration config;
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_CLIENTID)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_CLIENTID);
+            config.setValue(Randomite.uniqueId());
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_CLIENTID + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT);
+            config.setValue(Timespan.MINUTES_30);
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_LOCK_TIMEOUT + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_REVISION)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_REVISION);
+            config.setValue(0);
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_REVISION + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_VERSION)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_VERSION);
+            config.setValue(BuildConfig.VERSION_NAME);
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_VERSION + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_CREATED)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_CREATED);
+            config.setValue(Timespan.now());
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_VERSION + " with value: " + config.getValue());
+        }
     }
 
 }
