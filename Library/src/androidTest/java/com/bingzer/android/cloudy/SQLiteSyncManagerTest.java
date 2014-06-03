@@ -27,30 +27,43 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
         assertNotNull(manager.getRoot());
     }
 
-    /////////////////////////////////////////////////////////////////////////////////
-
-    public void test_sync(){
+    public void test_yield_to_otherclients() throws Exception{
         deleteLock();
 
-        // TODO: check before and after sync
-        IEnvironment local = Environment.getLocalEnvironment();
-        local.getDatabase().open(1, new TestDbBuilder(getContext()));
+        String name = Timespan.now() + ".lock";
+        File f = new File(getContext().getFilesDir(), name);
+        f.createNewFile();
+        RemoteFile lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
 
-        new Person(local, "Person1", 1).save();
-        new Person(local, "Person2", 2).save();
-        new Person(local, "Person3", 3).save();
-        new Person(local, "Person4", 4).save();
-        new Person(local, "Person5", 5).save();
+        // -- mocking other client is syncing
+        try{
+            manager.syncDatabase(remoteDbFile);
+            fail("Should throw exception");
+        }
+        catch (SyncException e){
+            assertEquals("Other client is syncing. Must yield.", e.getMessage());
+            assertTrue("Good", true);
+        }
 
-        //assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
-        //assertEquals(0, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
-        //assertEquals(5, local.getDatabase().get("Person").count());
-        //assertEquals(0, remote.getDatabase().get("Person").count());
+        // mocking other client is syncing but the lock timeout is expire (default is 30 minutes)
+        lockFile.delete();
+        name = (Timespan.now() - (Timespan.MINUTES_30 + 1)) + ".lock";
+        f = new File(getContext().getFilesDir(), name);
+        f.createNewFile();
+        lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
 
-        manager.syncDatabase(remoteDbFile);
+        try{
+            manager.syncDatabase(remoteDbFile);
+            assertTrue("Good", true);
+        }
+        catch (SyncException e){
+            fail("Shouldn't throw exception");
+        }
+
+        lockFile.delete();
+
+        deleteLock();
     }
-
-    /////////////////////////////////////////////////////////////////////////////////
 
     public void test_acquireLock() throws Exception{
         deleteLock();
@@ -91,7 +104,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
             fail("Should throw syncexception");
         }
         catch (SyncException e){
-            assertEquals("Everything is up-to-date", e.getMessage());
+            assertEquals("No changes detected", e.getMessage());
             assertTrue("Good", true);
 
         }

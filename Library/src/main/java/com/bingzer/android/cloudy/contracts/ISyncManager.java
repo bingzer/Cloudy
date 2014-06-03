@@ -1,7 +1,11 @@
 package com.bingzer.android.cloudy.contracts;
 
+import com.bingzer.android.cloudy.SyncException;
 import com.bingzer.android.driven.RemoteFile;
 
+/**
+ * Sync manager
+ */
 public interface ISyncManager {
 
     /**
@@ -13,6 +17,6 @@ public interface ISyncManager {
      * Sync database
      * @param dbRemoteFile dbRemote file
      */
-    void syncDatabase(RemoteFile dbRemoteFile);
+    void syncDatabase(RemoteFile dbRemoteFile) throws SyncException;
 
 }

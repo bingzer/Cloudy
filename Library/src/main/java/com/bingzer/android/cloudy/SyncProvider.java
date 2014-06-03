@@ -36,25 +36,44 @@ class SyncProvider implements ISyncProvider {
 
     @Override
     public long sync(long timestamp) {
-        Log.i(TAG, "Sync starting. LastSync: " + timestamp);
-        long now = Timespan.now();
-        TimeRange range = new TimeRange(timestamp, now);
+        Log.i(TAG, "Sync starting. Revision: " + timestamp);
+        try{
+            TimeRange range = new TimeRange(timestamp, Timespan.now());
+            Counter counter = new Counter();
 
-        // update Local to Remote
-        syncEnvironment(UPSTREAM, range, local, remote);
-        // update Remote to Local
-        syncEnvironment(DOWNSTREAM, range, remote, local);
+            // Entity (Local to Remote)
+            Counter affected = syncEnvironment(UPSTREAM, range, local, remote);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter LocalToRemote(Entity) = " + counter.value);
 
-        // update sync history
-        syncEntityHistory(UPSTREAM, range, local, remote);
-        syncEntityHistory(DOWNSTREAM, range, remote, local);
+            // Entity (Remote to Local)
+            affected = syncEnvironment(DOWNSTREAM, range, remote, local);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter RemoteToLocal(Entity) = " + counter.value);
 
-        // update client revision
-        ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
-        config.setValue(now);
-        config.save();
+            // EntityHistory (Local to Remote)
+            affected = syncEntityHistory(range, local, remote);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter LocalToRemote(EntityHistory) = " + counter.value);
 
-        return now;
+            // EntityHistory (Remote to Local)
+            affected = syncEntityHistory(range, remote, local);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter RemoteToLocal(EntityHistory) = " + counter.value);
+
+            // Client REVISION (Local only)
+            Log.d(TAG, "Updating LocalConfiguration's Revision to: " + range.to);
+            ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
+            config.setValue(range.to);
+            config.save();
+
+            Log.i(TAG, "Total SyncCounter = " + counter.value);
+
+            return range.to;
+        }
+        finally {
+            Log.i(TAG, "End of sync()");
+        }
     }
 
     @Override
@@ -68,25 +87,31 @@ class SyncProvider implements ISyncProvider {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private void syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
+    private Counter syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final Counter counter = new Counter();
         final IEntityHistory syncHistory = new EntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
+                        counter.value ++;
                         return syncSequence(streamType, source, destination, syncHistory, cursor);
                     }
                 });
+        return counter;
     }
 
-    private void syncEntityHistory(int type, TimeRange range, final IEnvironment source, final IEnvironment destination){
+    private Counter syncEntityHistory(TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final Counter counter = new Counter();
         final IEntityHistory syncHistory = new EntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
+                        counter.value++;
+
                         syncHistory.load(cursor);
                         if (!destination.getDatabase()
                                 .get(IEntityHistory.TABLE_NAME)
@@ -97,6 +122,7 @@ class SyncProvider implements ISyncProvider {
                         return true;
                     }
                 });
+        return counter;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +283,9 @@ class SyncProvider implements ISyncProvider {
     private void updateDownstream(ISyncEntity srcEntity, ISyncEntity destEntity){
         if(hasLocalFiles(destEntity)){
             for(File file : destEntity.getLocalFiles()){
-                file.delete();
+                if(!file.delete()){
+                    Log.w(TAG, "Unable to delete " + file);
+                }
             }
         }
 
@@ -303,5 +331,9 @@ class SyncProvider implements ISyncProvider {
             this.from = from;
             this.to = to;
         }
+    }
+
+    private static class Counter {
+        long value = 0;
     }
 }
