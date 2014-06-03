@@ -5,7 +5,7 @@ import android.test.AndroidTestCase;
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
@@ -23,7 +23,6 @@ import java.io.File;
 public class SQLiteSyncManagerTest extends AndroidTestCase {
 
     private SQLiteSyncManager manager;
-    private File clientFile;
     private StorageProvider storageProvider;
     private RemoteFile remoteRoot;
     private RemoteFile remoteDbFile;
@@ -42,30 +41,12 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         remoteDbFile = storageProvider.create(remoteRoot, "remoteDb", new LocalFile(new File(dbSample.getPath())));
 
         manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot);
-        clientFile = new File(getContext().getFilesDir(), "Cloudy.Client");
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-
-        // TODO: delete local database so we're fresh
-        //remote.getDatabase().close();
-        //local.getDatabase().close();
-        // delete databases
-        //getContext().deleteDatabase("SyncProviderTest-Local");
-        //getContext().deleteDatabase("SyncProviderTest-Remote");
     }
 
     /////////////////////////////////////////////////////////////////////////////////
 
     public void test_getRoot(){
         assertNotNull(manager.getRoot());
-    }
-
-    public void test_getClientId(){
-        assertTrue(manager.getClientRevision().getClientId() != -1);
-        assertTrue(clientFile.exists());
     }
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -122,10 +103,11 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
 
         // we should not sync
         try{
-            Environment.getLocalEnvironment().getDatabase().open(1, new TestDbBuilder(getContext()));
-            IClientRevision clientSyncInfo = manager.getClientRevision();
-            clientSyncInfo.setRevision(existingTimestamp);
-            assertTrue(clientSyncInfo.save());
+            IEnvironment environment = Environment.getLocalEnvironment();
+            environment.getDatabase().open(1, new TestDbBuilder(getContext()));
+            ILocalConfiguration config = LocalConfiguration.getConfig(environment, LocalConfiguration.SETTING_REVISION);
+            config.setValue(existingTimestamp);
+            assertTrue(config.save());
 
             manager.syncDatabase(remoteDbFile);
             fail("Should throw syncexception");

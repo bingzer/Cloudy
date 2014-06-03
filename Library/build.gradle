@@ -40,7 +40,7 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // don't cache changing modules at all
-        //cacheChangingModulesFor 0, 'seconds'
+        // cacheChangingModulesFor 0, 'seconds'
     }
 }
 

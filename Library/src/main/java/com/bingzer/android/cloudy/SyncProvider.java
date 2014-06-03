@@ -4,7 +4,7 @@ import android.database.Cursor;
 import android.util.Log;
 
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
@@ -50,9 +50,8 @@ class SyncProvider implements ISyncProvider {
         syncEntityHistory(DOWNSTREAM, range, remote, local);
 
         // update client revision
-        long clientId = manager.getClientRevision().getClientId();
-        syncClient(now, local, clientId);
-        syncClient(now, remote, clientId);
+        ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
+        config.setValue(now);
 
         return now;
     }
@@ -97,12 +96,6 @@ class SyncProvider implements ISyncProvider {
                         return true;
                     }
                 });
-    }
-
-    private void syncClient(long timestamp, final IEnvironment source, long clientId){
-        IClientRevision client = ClientRevision.getClient(source, clientId);
-        client.setRevision(timestamp);
-        client.save();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////

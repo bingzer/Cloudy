@@ -1,11 +1,13 @@
 package com.bingzer.android.cloudy;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
+import com.bingzer.android.Randomite;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
 import com.bingzer.android.dbv.DbQuery;
@@ -21,10 +23,11 @@ import java.util.List;
 
 public class SQLiteSyncManager implements ISyncManager {
 
+    private static final String TAG = "SQLiteSyncManager";
     private RemoteFile root;
     private List<RemoteFile> childrenOfRoot;
     private Context context;
-    private ClientRevision localRevision;
+    private IEnvironment local;
 
     private RemoteFile revisionFile;   // 1321346465.revision
     private RemoteFile lockFile;       // 1231465466.lock
@@ -35,12 +38,8 @@ public class SQLiteSyncManager implements ISyncManager {
         if(!root.isDirectory()) throw new SyncException("root must be a directory");
         this.root = root;
         this.context = context.getApplicationContext();
-        this.localRevision = new ClientRevision(context, local);
-    }
-
-    @Override
-    public IClientRevision getClientRevision() {
-        return localRevision;
+        this.local = local;
+        seedConfigs(local);
     }
 
     @Override
@@ -52,15 +51,16 @@ public class SQLiteSyncManager implements ISyncManager {
     public void syncDatabase(RemoteFile dbRemoteFile) {
         childrenOfRoot = root.list();
         ISyncProvider syncProvider = null;
+        long revision = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_REVISION).getValueAsLong();
         try{
-            if(!shouldSync(localRevision.getRevision())) throw new SyncException("Everything is up-to-date");
+            if(!shouldSync(revision)) throw new SyncException("Everything is up-to-date");
             if(!acquireLock()) throw new SyncException("Another client is syncing");
             ensureRevisionExists(childrenOfRoot);
 
             IEnvironment remote = createRemoteEnvironment(dbRemoteFile);
 
-            syncProvider = new SyncProvider(this, localRevision.getEnvironment(), remote);
-            long newTimestamp = syncProvider.sync(localRevision.getRevision());
+            syncProvider = new SyncProvider(this, local, remote);
+            long newTimestamp = syncProvider.sync(revision);
 
             if(!revisionFile.rename(newTimestamp + ".revision"))
                 throw new SyncException("Failed to commit new revision");
@@ -162,7 +162,6 @@ public class SQLiteSyncManager implements ISyncManager {
     }
 
     private IEnvironment createRemoteEnvironment(RemoteFile remoteDbFile){
-        IEnvironment local = localRevision.getEnvironment();
         IDatabase localDb = local.getDatabase();
         LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
         remoteDbFile.download(dbLocalFile);
@@ -171,6 +170,33 @@ public class SQLiteSyncManager implements ISyncManager {
         db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
 
         return new Environment(db);
+    }
+
+    /**
+     * Seed all configs if it does not exists
+     */
+    private void seedConfigs(IEnvironment env){
+        ILocalConfiguration config;
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_CLIENTID)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_CLIENTID);
+            config.setValue(Randomite.uniqueId());
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_CLIENTID + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_LOCK_TIMEOUT);
+            config.setValue(Timespan.MINUTES_30);
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_LOCK_TIMEOUT + " with value: " + config.getValue());
+        }
+
+        if(!LocalConfiguration.hasConfig(env, LocalConfiguration.SETTING_REVISION)){
+            config = LocalConfiguration.getConfig(env, LocalConfiguration.SETTING_REVISION);
+            config.setValue(0);
+            config.save();
+            Log.i(TAG, "Seeding " + LocalConfiguration.SETTING_LOCK_TIMEOUT + " with value: " + config.getValue());
+        }
     }
 
 }

@@ -1,6 +1,6 @@
 package com.bingzer.android.cloudy;
 
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.IDatabase;
@@ -23,11 +23,11 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
     @Override
     public void onModelCreate(IDatabase db, IDatabase.Modeling modeling) {
         // -- CloudyClient
-        modeling.add(IClientRevision.TABLE_NAME)
+        modeling.add(ILocalConfiguration.TABLE_NAME)
                 .addPrimaryKey("Id")
                 .addInteger("SyncId")
-                .addInteger("ClientId", "unique")
-                .addInteger("Revision")
+                .addText("Name", "unique")
+                .addText("Value")
                 .index("Id", "SyncId")
                 .ifNotExists();
 

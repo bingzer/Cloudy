@@ -4,13 +4,18 @@ import android.test.AndroidTestCase;
 
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
+import com.bingzer.android.driven.Credential;
+import com.bingzer.android.driven.LocalFile;
+import com.bingzer.android.driven.RemoteFile;
+import com.bingzer.android.driven.StorageProvider;
+import com.bingzer.android.driven.local.ExternalDrive;
 import com.example.Person;
 import com.example.TestDbBuilder;
 
@@ -38,7 +43,6 @@ public class SyncProviderTest extends AndroidTestCase {
         local = new Environment(localDb);
         remote = new Environment(remoteDb);
         ISyncManager manager = mock(ISyncManager.class);
-        when(manager.getClientRevision()).thenReturn(mock(IClientRevision.class));
 
         provider = new SyncProvider(manager, local, remote);
 

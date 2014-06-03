@@ -4,8 +4,6 @@ import com.bingzer.android.driven.RemoteFile;
 
 public interface ISyncManager {
 
-    IClientRevision getClientRevision();
-
     /**
      * Returns the Root
      */
