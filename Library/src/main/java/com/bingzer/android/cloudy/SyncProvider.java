@@ -87,9 +87,9 @@ class SyncProvider implements ISyncProvider {
                     @Override
                     public boolean next(Cursor cursor) {
                         syncHistory.load(cursor);
-                        if(!destination.getDatabase()
+                        if (!destination.getDatabase()
                                 .get(IEntityHistory.TABLE_NAME)
-                                .has("SyncId = ?", syncHistory.getSyncId())){
+                                .has("SyncId = ?", syncHistory.getSyncId())) {
                             syncHistory.setId(-1);
                             syncHistory.save();
                         }
@@ -184,7 +184,9 @@ class SyncProvider implements ISyncProvider {
             for(File file : entity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
                 String filename = createRemoteFileNameForLocalFile(entity, file);
-                remoteDir.create(filename, localFile);
+                RemoteFile remoteFile = remoteDir.create(filename, localFile);
+                if(remoteFile == null)
+                    throw new SyncException("Unable to create RemoteFile: " + filename);
             }
         }
     }
@@ -197,7 +199,8 @@ class SyncProvider implements ISyncProvider {
                 LocalFile localFile = new LocalFile(file);
                 String filename = createRemoteFileNameForLocalFile(entity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.download(localFile);
+                if(!remoteFile.download(localFile))
+                    throw new SyncException("Unable to download: " + file.getName());
             }
         }
     }
@@ -209,7 +212,8 @@ class SyncProvider implements ISyncProvider {
             for(File file : entity.getLocalFiles()){
                 String filename = createRemoteFileNameForLocalFile(entity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.delete();
+                if(!remoteFile.delete())
+                    throw new SyncException("Unable to delete: " + file.getName());
             }
         }
     }
@@ -219,7 +223,7 @@ class SyncProvider implements ISyncProvider {
 
             for(File file : entity.getLocalFiles()){
                 if(!file.delete())
-                    throw new SyncException("Failed to delete: " + file);
+                    throw new SyncException("Unable to delete: " + file);
             }
         }
     }
@@ -263,7 +267,7 @@ class SyncProvider implements ISyncProvider {
     }
 
     private String createRemoteFileNameForLocalFile(ISyncEntity entity, File file){
-        return entity.getSyncId() + ":" + file.getName();
+        return entity.getSyncId() + "." + file.getName();
     }
 
     private boolean hasLocalFiles(ISyncEntity entity){

@@ -1,30 +1,22 @@
 package com.bingzer.android.cloudy;
 
-import android.test.AndroidTestCase;
+import android.database.Cursor;
 
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
-import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
-import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
-import com.bingzer.android.driven.StorageProvider;
-import com.bingzer.android.driven.local.ExternalDrive;
 import com.example.Person;
 import com.example.TestDbBuilder;
 
 import java.io.File;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-public class SyncProviderTest extends AndroidTestCase {
+public class SyncProviderTest extends UsingExternalDriveTestCase {
 
     SyncProvider provider;
     IEnvironment remote;
@@ -34,6 +26,8 @@ public class SyncProviderTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
+        super.setUp();
+
         syncTimestamp = Timespan.now();
         IDatabase localDb = DbQuery.getDatabase("SyncProviderTest-Local");
         localDb.open(1, new TestDbBuilder(getContext()));
@@ -42,8 +36,8 @@ public class SyncProviderTest extends AndroidTestCase {
 
         local = new Environment(localDb);
         remote = new Environment(remoteDb);
-        ISyncManager manager = mock(ISyncManager.class);
 
+        manager = new SQLiteSyncManager(getContext(), local, remoteRoot);
         provider = new SyncProvider(manager, local, remote);
 
         // we need to extract all images from assets to files dir
@@ -70,11 +64,21 @@ public class SyncProviderTest extends AndroidTestCase {
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+
         remote.getDatabase().close();
         local.getDatabase().close();
         // delete databases
         getContext().deleteDatabase("SyncProviderTest-Local");
         getContext().deleteDatabase("SyncProviderTest-Remote");
+    }
+
+    public void test_sync_close() throws Exception {
+        File remoteDb = new File(remote.getDatabase().getPath());
+        provider.sync(syncTimestamp);
+        assertTrue(remoteDb.exists());
+
+        provider.cleanup();
+        assertFalse(remoteDb.exists());
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,13 +123,116 @@ public class SyncProviderTest extends AndroidTestCase {
         assertEquals(5, local.getDatabase().get("Person").count());
     }
 
-    public void test_sync_close() throws Exception {
-        File remoteDb = new File(remote.getDatabase().getPath());
-        provider.sync(syncTimestamp);
-        assertTrue(remoteDb.exists());
+    public void test_sync_localToRemote_withImages() throws Exception {
+        if(remoteRoot.get("Person") != null){
+            for(RemoteFile child : remoteRoot.get("Person").list()){
+                child.delete();
+            }
+        }
 
-        provider.cleanup();
-        assertFalse(remoteDb.exists());
+        new Person(local, "Person1", 1, image1.getAbsolutePath()).save();
+        new Person(local, "Person2", 2, image2.getAbsolutePath()).save();
+        new Person(local, "Person3", 3, image3.getAbsolutePath()).save();
+        new Person(local, "Person4", 4, image4.getAbsolutePath()).save();
+        new Person(local, "Person5", 5, image5.getAbsolutePath()).save();
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(0, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(0, remote.getDatabase().get("Person").count());
+
+        provider.sync(syncTimestamp);
+
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+
+        // make sure files exists
+        int counter = 0;
+        Cursor cursor = local.getDatabase().get("Person").select().query();
+        while(cursor.moveToNext()){
+            Person p = new Person(local);
+            p.load(cursor);
+
+            String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+            assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            ++counter;
+        }
+        cursor.close();
+        assertEquals(5, counter);
+
+        for(RemoteFile child : remoteRoot.get("Person").list()){
+            child.delete();
+        }
+    }
+
+    public void test_sync_RemoteToLocal_WithImages() throws Exception {
+        Person person1 = new Person(remote, "Person1", 1, image1.getAbsolutePath());
+        person1.save();
+        Person person2 = new Person(remote, "Person2", 2, image2.getAbsolutePath());
+        person2.save();
+        Person person3 = new Person(remote, "Person3", 3, image3.getAbsolutePath());
+        person3.save();
+        Person person4 = new Person(remote, "Person4", 4, image4.getAbsolutePath());
+        person4.save();
+        Person person5 = new Person(remote, "Person5", 5, image5.getAbsolutePath());
+        person5.save();
+        // manually upload these images to the storageprovider
+        remoteRoot.create("Person");
+        remoteRoot.get("Person").create(person1.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+        remoteRoot.get("Person").create(person2.getSyncId() + "." + image2.getName(), new LocalFile(image2));
+        remoteRoot.get("Person").create(person3.getSyncId() + "." + image3.getName(), new LocalFile(image3));
+        remoteRoot.get("Person").create(person4.getSyncId() + "." + image4.getName(), new LocalFile(image4));
+        remoteRoot.get("Person").create(person5.getSyncId() + "." + image5.getName(), new LocalFile(image5));
+
+        // delete files on disk
+        assertTrue(image1.delete());
+        assertTrue(image2.delete());
+        assertTrue(image3.delete());
+        assertTrue(image4.delete());
+        assertTrue(image5.delete());
+        assertFalse(image1.exists());
+        assertFalse(image2.exists());
+        assertFalse(image3.exists());
+        assertFalse(image4.exists());
+        assertFalse(image5.exists());
+
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(0, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        assertEquals(0, local.getDatabase().get("Person").count());
+
+        provider.sync(syncTimestamp);
+
+        assertEquals(5, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
+        assertEquals(5, remote.getDatabase().get("Person").count());
+        assertEquals(5, local.getDatabase().get("Person").count());
+
+        // make sure files exists
+        int counter = 0;
+        Cursor cursor = remote.getDatabase().get("Person").select().query();
+        while(cursor.moveToNext()){
+            Person p = new Person(remote);
+            p.load(cursor);
+
+            String remoteFilename = p.getSyncId() + "." + p.getLocalFiles()[0].getName();
+            assertNotNull(remoteRoot.get("Person").get(remoteFilename));
+            ++counter;
+        }
+        cursor.close();
+        assertEquals(5, counter);
+        // delete files on disk
+        assertTrue(image1.exists());
+        assertTrue(image2.exists());
+        assertTrue(image3.exists());
+        assertTrue(image4.exists());
+        assertTrue(image5.exists());
+
+        for(RemoteFile child : remoteRoot.get("Person").list()){
+            child.delete();
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
