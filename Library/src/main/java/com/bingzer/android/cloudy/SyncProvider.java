@@ -52,6 +52,7 @@ class SyncProvider implements ISyncProvider {
         // update client revision
         ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
         config.setValue(now);
+        config.save();
 
         return now;
     }
