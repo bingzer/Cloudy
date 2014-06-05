@@ -12,6 +12,8 @@ import com.bingzer.android.driven.StorageProvider;
 import com.bingzer.android.driven.local.ExternalDrive;
 import com.example.TestDbBuilder;
 
+import org.mockito.cglib.core.Local;
+
 import java.io.File;
 
 public class UsingExternalDriveTestCase extends AndroidTestCase{
@@ -32,6 +34,6 @@ public class UsingExternalDriveTestCase extends AndroidTestCase{
         storageProvider = new ExternalDrive();
         storageProvider.authenticate(new Credential(getContext(), rootFile.getAbsolutePath()));
         remoteRoot = storageProvider.create("remoteRoot");
-        remoteDbFile = storageProvider.create(remoteRoot, "remoteDb", new LocalFile(new File(dbSample.getPath())));
+        remoteDbFile = storageProvider.create(remoteRoot, new LocalFile(new File(dbSample.getPath())));
     }
 }

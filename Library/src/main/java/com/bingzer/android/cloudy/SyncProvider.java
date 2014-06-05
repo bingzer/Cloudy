@@ -214,10 +214,10 @@ class SyncProvider implements ISyncProvider {
 
             for(File file : entity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
-                RemoteFile remoteFile = remoteDir.create(filename, localFile);
+                localFile.setName(createRemoteFileNameForLocalFile(entity, file));
+                RemoteFile remoteFile = remoteDir.create(localFile);
                 if(remoteFile == null)
-                    throw new SyncException("Unable to create RemoteFile: " + filename);
+                    throw new SyncException("Unable to create RemoteFile: " + localFile.getName());
             }
         }
     }
@@ -274,8 +274,8 @@ class SyncProvider implements ISyncProvider {
 
             for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(srcEntity, file);
-                remoteDir.create(filename, localFile);
+                localFile.setName(createRemoteFileNameForLocalFile(srcEntity, file));
+                remoteDir.create(localFile);
             }
         }
     }

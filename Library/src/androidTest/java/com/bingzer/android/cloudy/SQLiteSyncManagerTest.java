@@ -33,7 +33,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
         String name = Timespan.now() + ".lock";
         File f = new File(getContext().getFilesDir(), name);
         f.createNewFile();
-        RemoteFile lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
+        RemoteFile lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
         // -- mocking other client is syncing
         try{
@@ -50,7 +50,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
         name = (Timespan.now() - (Timespan.MINUTES_30 + 1)) + ".lock";
         f = new File(getContext().getFilesDir(), name);
         f.createNewFile();
-        lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
+        lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
         try{
             manager.syncDatabase(remoteDbFile);
@@ -71,7 +71,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
         String name = Timespan.now() + ".lock";
         File f = new File(getContext().getFilesDir(), name);
         f.createNewFile();
-        RemoteFile lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
+        RemoteFile lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
         assertFalse(manager.acquireLock());
 

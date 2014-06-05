@@ -97,7 +97,10 @@ public class SQLiteSyncManager implements ISyncManager {
                 File f = new File(context.getFilesDir(), "-1.revision");
                 if (!f.exists() && !f.createNewFile())
                     throw new SyncException("Unable to create file: " + f);
-                revisionFile = root.create("-1.revision", new LocalFile(f));
+
+                LocalFile localFile = new LocalFile(f);
+                localFile.setName("-1.revision");
+                revisionFile = root.create(localFile);
             }
             catch (IOException e){
                 throw new SyncException(e);
@@ -122,7 +125,10 @@ public class SQLiteSyncManager implements ISyncManager {
                 File f = new File(context.getFilesDir(), now + ".lock");
                 if (!f.exists() && !f.createNewFile())
                     throw new SyncException("Unable to create file: " + f);
-                lockFile = root.create(now + ".lock", new LocalFile(f));
+
+                LocalFile localFile = new LocalFile(f);
+                localFile.setName(now + ".revision");
+                lockFile = root.create(localFile);
             }
             catch (IOException e){
                 throw new SyncException(e);

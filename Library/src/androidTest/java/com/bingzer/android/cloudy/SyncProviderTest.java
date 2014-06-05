@@ -269,11 +269,11 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
         person5.save();
         // manually upload these images to the storageprovider
         remoteRoot.create("Person");
-        remoteRoot.get("Person").create(person1.getSyncId() + "." + image1.getName(), new LocalFile(image1));
-        remoteRoot.get("Person").create(person2.getSyncId() + "." + image2.getName(), new LocalFile(image2));
-        remoteRoot.get("Person").create(person3.getSyncId() + "." + image3.getName(), new LocalFile(image3));
-        remoteRoot.get("Person").create(person4.getSyncId() + "." + image4.getName(), new LocalFile(image4));
-        remoteRoot.get("Person").create(person5.getSyncId() + "." + image5.getName(), new LocalFile(image5));
+        remoteRoot.get("Person").create(new LocalFile(image1, null, person1.getSyncId() + "." + image1.getName()));
+        remoteRoot.get("Person").create(new LocalFile(image2, null, person2.getSyncId() + "." + image2.getName()));
+        remoteRoot.get("Person").create(new LocalFile(image3, null, person3.getSyncId() + "." + image3.getName()));
+        remoteRoot.get("Person").create(new LocalFile(image4, null, person4.getSyncId() + "." + image4.getName()));
+        remoteRoot.get("Person").create(new LocalFile(image5, null, person5.getSyncId() + "." + image5.getName()));
 
         // delete files on disk
         assertTrue(image1.delete());
@@ -485,15 +485,15 @@ public class SyncProviderTest extends UsingExternalDriveTestCase {
 
         RemoteFile remoteDir = remoteRoot.get("Person");
         if(remoteDir.get(person1.getSyncId() + "." + image1.getName()) == null)
-            remoteDir.create(person1.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+            remoteDir.create(new LocalFile(image1, null, person1.getSyncId() + "." + image1.getName()));
         if(remoteDir.get(person2.getSyncId() + "." + image1.getName()) == null)
-            remoteDir.create(person2.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+            remoteDir.create(new LocalFile(image1, null, person2.getSyncId() + "." + image1.getName()));
         if(remoteDir.get(person3.getSyncId() + "." + image1.getName()) == null)
-            remoteDir.create(person3.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+            remoteDir.create(new LocalFile(image1, null, person3.getSyncId() + "." + image1.getName()));
         if(remoteDir.get(person4.getSyncId() + "." + image1.getName()) == null)
-            remoteDir.create(person4.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+            remoteDir.create(new LocalFile(image1, null, person4.getSyncId() + "." + image1.getName()));
         if(remoteDir.get(person5.getSyncId() + "." + image1.getName()) == null)
-            remoteDir.create(person5.getSyncId() + "." + image1.getName(), new LocalFile(image1));
+            remoteDir.create(new LocalFile(image1, null, person5.getSyncId() + "." + image1.getName()));
 
         assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
         assertEquals(10, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
