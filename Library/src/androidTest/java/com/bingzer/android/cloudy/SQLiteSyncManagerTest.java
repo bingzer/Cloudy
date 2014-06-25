@@ -1,60 +1,24 @@
 package com.bingzer.android.cloudy;
 
-import android.test.AndroidTestCase;
-
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
-import com.bingzer.android.dbv.DbQuery;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.dbv.Environment;
-import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
-import com.bingzer.android.driven.Credential;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
-import com.bingzer.android.driven.StorageProvider;
-import com.bingzer.android.driven.local.ExternalDrive;
 import com.example.Person;
 import com.example.TestDbBuilder;
 
 import java.io.File;
 
-public class SQLiteSyncManagerTest extends AndroidTestCase {
-
-    private SQLiteSyncManager manager;
-    private File clientFile;
-    private StorageProvider storageProvider;
-    private RemoteFile remoteRoot;
-    private RemoteFile remoteDbFile;
-
+public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
 
-        IDatabase dbSample = DbQuery.getDatabase("SampleDb");
-        dbSample.open(1, new TestDbBuilder(getContext()));
-
-        File rootFile = new File(android.os.Environment.getExternalStorageDirectory(), "cloudy-remote-test");
-        storageProvider = new ExternalDrive();
-        storageProvider.authenticate(new Credential(getContext(), rootFile.getAbsolutePath()));
-        remoteRoot = storageProvider.create("remoteRoot");
-        remoteDbFile = storageProvider.create(remoteRoot, "remoteDb", new LocalFile(new File(dbSample.getPath())));
-
         manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot);
-        clientFile = new File(getContext().getFilesDir(), "Cloudy.Client");
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-
-        // TODO: delete local database so we're fresh
-        //remote.getDatabase().close();
-        //local.getDatabase().close();
-        // delete databases
-        //getContext().deleteDatabase("SyncProviderTest-Local");
-        //getContext().deleteDatabase("SyncProviderTest-Remote");
     }
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -63,35 +27,43 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         assertNotNull(manager.getRoot());
     }
 
-    public void test_getClientId(){
-        assertTrue(manager.getClientRevision().getClientId() != -1);
-        assertTrue(clientFile.exists());
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////
-
-    public void test_sync(){
+    public void test_yield_to_otherclients() throws Exception{
         deleteLock();
 
-        // TODO: check before and after sync
-        IEnvironment local = Environment.getLocalEnvironment();
-        local.getDatabase().open(1, new TestDbBuilder(getContext()));
+        String name = Timespan.now() + ".lock";
+        File f = new File(getContext().getFilesDir(), name);
+        f.createNewFile();
+        RemoteFile lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
-        new Person(local, "Person1", 1).save();
-        new Person(local, "Person2", 2).save();
-        new Person(local, "Person3", 3).save();
-        new Person(local, "Person4", 4).save();
-        new Person(local, "Person5", 5).save();
+        // -- mocking other client is syncing
+        try{
+            manager.syncDatabase(remoteDbFile);
+            fail("Should throw exception");
+        }
+        catch (SyncException e){
+            assertEquals("Other client is syncing. Must yield.", e.getMessage());
+            assertTrue("Good", true);
+        }
 
-        //assertEquals(5, local.getDatabase().get(IEntityHistory.TABLE_NAME).count());
-        //assertEquals(0, remote.getDatabase().get(IEntityHistory.TABLE_NAME).count());
-        //assertEquals(5, local.getDatabase().get("Person").count());
-        //assertEquals(0, remote.getDatabase().get("Person").count());
+        // mocking other client is syncing but the lock timeout is expire (default is 30 minutes)
+        lockFile.delete();
+        name = (Timespan.now() - (Timespan.MINUTES_30 + 1)) + ".lock";
+        f = new File(getContext().getFilesDir(), name);
+        f.createNewFile();
+        lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
-        manager.syncDatabase(remoteDbFile);
+        try{
+            manager.syncDatabase(remoteDbFile);
+            assertTrue("Good", true);
+        }
+        catch (SyncException e){
+            fail("Shouldn't throw exception");
+        }
+
+        lockFile.delete();
+
+        deleteLock();
     }
-
-    /////////////////////////////////////////////////////////////////////////////////
 
     public void test_acquireLock() throws Exception{
         deleteLock();
@@ -99,7 +71,7 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
         String name = Timespan.now() + ".lock";
         File f = new File(getContext().getFilesDir(), name);
         f.createNewFile();
-        RemoteFile lockFile = storageProvider.create(remoteRoot, name, new LocalFile(f));
+        RemoteFile lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
         assertFalse(manager.acquireLock());
 
@@ -122,16 +94,17 @@ public class SQLiteSyncManagerTest extends AndroidTestCase {
 
         // we should not sync
         try{
-            Environment.getLocalEnvironment().getDatabase().open(1, new TestDbBuilder(getContext()));
-            IClientRevision clientSyncInfo = manager.getClientRevision();
-            clientSyncInfo.setRevision(existingTimestamp);
-            assertTrue(clientSyncInfo.save());
+            IEnvironment environment = Environment.getLocalEnvironment();
+            environment.getDatabase().open(1, new TestDbBuilder(getContext()));
+            ILocalConfiguration config = LocalConfiguration.getConfig(environment, LocalConfiguration.SETTING_REVISION);
+            config.setValue(existingTimestamp);
+            assertTrue(config.save());
 
             manager.syncDatabase(remoteDbFile);
             fail("Should throw syncexception");
         }
         catch (SyncException e){
-            assertEquals("Everything is up-to-date", e.getMessage());
+            assertEquals("No changes detected", e.getMessage());
             assertTrue("Good", true);
 
         }

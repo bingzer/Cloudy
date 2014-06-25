@@ -4,7 +4,7 @@ import android.database.Cursor;
 import android.util.Log;
 
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
@@ -36,25 +36,44 @@ class SyncProvider implements ISyncProvider {
 
     @Override
     public long sync(long timestamp) {
-        Log.i(TAG, "Sync starting. LastSync: " + timestamp);
-        long now = Timespan.now();
-        TimeRange range = new TimeRange(timestamp, now);
+        Log.i(TAG, "Sync starting. Revision: " + timestamp);
+        try{
+            TimeRange range = new TimeRange(timestamp, Timespan.now());
+            Counter counter = new Counter();
 
-        // update Local to Remote
-        syncEnvironment(UPSTREAM, range, local, remote);
-        // update Remote to Local
-        syncEnvironment(DOWNSTREAM, range, remote, local);
+            // Entity (Local to Remote)
+            Counter affected = syncEnvironment(UPSTREAM, range, local, remote);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter LocalToRemote(Entity) = " + counter.value);
 
-        // update sync history
-        syncEntityHistory(UPSTREAM, range, local, remote);
-        syncEntityHistory(DOWNSTREAM, range, remote, local);
+            // Entity (Remote to Local)
+            affected = syncEnvironment(DOWNSTREAM, range, remote, local);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter RemoteToLocal(Entity) = " + counter.value);
 
-        // update client revision
-        long clientId = manager.getClientRevision().getClientId();
-        syncClient(now, local, clientId);
-        syncClient(now, remote, clientId);
+            // EntityHistory (Local to Remote)
+            affected = syncEntityHistory(range, local, remote);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter LocalToRemote(EntityHistory) = " + counter.value);
 
-        return now;
+            // EntityHistory (Remote to Local)
+            affected = syncEntityHistory(range, remote, local);
+            counter.value += affected.value;
+            Log.d(TAG, "SyncCounter RemoteToLocal(EntityHistory) = " + counter.value);
+
+            // Client REVISION (Local only)
+            Log.d(TAG, "Updating LocalConfiguration's Revision to: " + range.to);
+            ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
+            config.setValue(range.to);
+            config.save();
+
+            Log.i(TAG, "Total SyncCounter = " + counter.value);
+
+            return range.to;
+        }
+        finally {
+            Log.i(TAG, "End of sync()");
+        }
     }
 
     @Override
@@ -68,41 +87,42 @@ class SyncProvider implements ISyncProvider {
 
     /////////////////////////////////////////////////////////////////////////////////////////
 
-    private void syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
+    private Counter syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final Counter counter = new Counter();
         final IEntityHistory syncHistory = new EntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
+                        counter.value ++;
                         return syncSequence(streamType, source, destination, syncHistory, cursor);
                     }
                 });
+        return counter;
     }
 
-    private void syncEntityHistory(int type, TimeRange range, final IEnvironment source, final IEnvironment destination){
+    private Counter syncEntityHistory(TimeRange range, final IEnvironment source, final IEnvironment destination){
+        final Counter counter = new Counter();
         final IEntityHistory syncHistory = new EntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
                     @Override
                     public boolean next(Cursor cursor) {
+                        counter.value++;
+
                         syncHistory.load(cursor);
-                        if(!destination.getDatabase()
+                        if (!destination.getDatabase()
                                 .get(IEntityHistory.TABLE_NAME)
-                                .has("SyncId = ?", syncHistory.getSyncId())){
+                                .has("SyncId = ?", syncHistory.getSyncId())) {
                             syncHistory.setId(-1);
                             syncHistory.save();
                         }
                         return true;
                     }
                 });
-    }
-
-    private void syncClient(long timestamp, final IEnvironment source, long clientId){
-        IClientRevision client = ClientRevision.getClient(source, clientId);
-        client.setRevision(timestamp);
-        client.save();
+        return counter;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -128,15 +148,19 @@ class SyncProvider implements ISyncProvider {
                 create(streamType, syncEntity);
                 break;
             case IEntityHistory.DELETE:
-                destinationTable.delete("SyncID = ?", syncHistory.getEntitySyncId());
+                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
+                destinationTable.delete("SyncId = ?", syncHistory.getEntitySyncId());
 
                 delete(streamType, syncEntity);
                 break;
             case IEntityHistory.UPDATE:
                 sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-                destinationTable.update(syncEntity);
 
-                update(streamType, syncEntity);
+                ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
+                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(destEntity);
+
+                update(streamType, syncEntity, destEntity);
+                destinationTable.update(syncEntity);
                 break;
         }
 
@@ -169,15 +193,15 @@ class SyncProvider implements ISyncProvider {
         }
     }
 
-    private void update(int streamType, ISyncEntity entity){
+    private void update(int streamType, ISyncEntity srcEntity, ISyncEntity destEntity){
         switch (streamType){
             default:
                 throw new SyncException("Unknown stream type: " + streamType);
             case UPSTREAM:
-                updateUpstream(entity);
+                updateUpstream(srcEntity, destEntity);
                 break;
             case DOWNSTREAM:
-                updateDownstream(entity);
+                updateDownstream(srcEntity, destEntity);
                 break;
         }
     }
@@ -190,8 +214,10 @@ class SyncProvider implements ISyncProvider {
 
             for(File file : entity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
-                remoteDir.create(filename, localFile);
+                localFile.setName(createRemoteFileNameForLocalFile(entity, file));
+                RemoteFile remoteFile = remoteDir.create(localFile);
+                if(remoteFile == null)
+                    throw new SyncException("Unable to create RemoteFile: " + localFile.getName());
             }
         }
     }
@@ -204,7 +230,8 @@ class SyncProvider implements ISyncProvider {
                 LocalFile localFile = new LocalFile(file);
                 String filename = createRemoteFileNameForLocalFile(entity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.download(localFile);
+                if(!remoteFile.download(localFile))
+                    throw new SyncException("Unable to download: " + file.getName());
             }
         }
     }
@@ -216,7 +243,8 @@ class SyncProvider implements ISyncProvider {
             for(File file : entity.getLocalFiles()){
                 String filename = createRemoteFileNameForLocalFile(entity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.delete();
+                if(!remoteFile.delete())
+                    throw new SyncException("Unable to delete: " + file.getName());
             }
         }
     }
@@ -226,31 +254,47 @@ class SyncProvider implements ISyncProvider {
 
             for(File file : entity.getLocalFiles()){
                 if(!file.delete())
-                    throw new SyncException("Failed to delete: " + file);
+                    throw new SyncException("Unable to delete: " + file);
             }
         }
     }
 
-    private void updateUpstream(ISyncEntity entity){
-        if(hasLocalFiles(entity)){
-            RemoteFile remoteDir = getRemoteDirectory(entity);
+    private void updateUpstream(ISyncEntity srcEntity, ISyncEntity destEntity){
+        if(hasLocalFiles(destEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(destEntity);
 
-            for(File file : entity.getLocalFiles()){
+            for(File file : destEntity.getLocalFiles()){
+                String filename = createRemoteFileNameForLocalFile(destEntity, file);
+                remoteDir.get(filename).delete();
+            }
+        }
+
+        if(hasLocalFiles(srcEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(srcEntity);
+
+            for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
-                RemoteFile remoteFile = remoteDir.get(filename);
-                remoteFile.upload(localFile);
+                localFile.setName(createRemoteFileNameForLocalFile(srcEntity, file));
+                remoteDir.create(localFile);
             }
         }
     }
 
-    private void updateDownstream(ISyncEntity entity){
-        if(hasLocalFiles(entity)){
-            RemoteFile remoteDir = getRemoteDirectory(entity);
+    private void updateDownstream(ISyncEntity srcEntity, ISyncEntity destEntity){
+        if(hasLocalFiles(destEntity)){
+            for(File file : destEntity.getLocalFiles()){
+                if(!file.delete()){
+                    Log.w(TAG, "Unable to delete " + file);
+                }
+            }
+        }
 
-            for(File file : entity.getLocalFiles()){
+        if(hasLocalFiles(srcEntity)){
+            RemoteFile remoteDir = getRemoteDirectory(srcEntity);
+
+            for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
-                String filename = createRemoteFileNameForLocalFile(entity, file);
+                String filename = createRemoteFileNameForLocalFile(srcEntity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
                 remoteFile.download(localFile);
             }
@@ -270,7 +314,7 @@ class SyncProvider implements ISyncProvider {
     }
 
     private String createRemoteFileNameForLocalFile(ISyncEntity entity, File file){
-        return entity.getSyncId() + ":" + file.getName();
+        return entity.getSyncId() + "." + file.getName();
     }
 
     private boolean hasLocalFiles(ISyncEntity entity){
@@ -287,5 +331,9 @@ class SyncProvider implements ISyncProvider {
             this.from = from;
             this.to = to;
         }
+    }
+
+    private static class Counter {
+        long value = 0;
     }
 }

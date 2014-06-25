@@ -1,6 +1,6 @@
 package com.bingzer.android.cloudy;
 
-import com.bingzer.android.cloudy.contracts.IClientRevision;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.IDatabase;
@@ -8,26 +8,48 @@ import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.SQLiteBuilder;
 
 /**
- * You must use this builder
+ * This is the builder that should be used when building
+ * the {@link com.bingzer.android.dbv.IDatabase}.
+ * This builder will build two additional internal tables
+ * inside its {@link #onModelCreate(com.bingzer.android.dbv.IDatabase, com.bingzer.android.dbv.IDatabase.Modeling)}
+ * method. Therefore, you should always call
+ * {@link super#onModelCreate(com.bingzer.android.dbv.IDatabase, com.bingzer.android.dbv.IDatabase.Modeling)}
+ * <p><pre><code>
+ * int version = ...;
+ * IDatabase dbToSync = ...;
+ * dbToSync.open(version, new SQLiteSyncBuilder(getContext()){
+ *    ...
+ * });
+ * </code></pre></p>
  */
 public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
 
+    /**
+     * Creates an instance of SQLiteSyncBuilder with the default environment
+     * {@link com.bingzer.android.dbv.Environment#getLocalEnvironment()}
+     */
     protected SQLiteSyncBuilder() {
         super();
     }
 
+    /**
+     * Creates an instance of {@code SQLiteSyncBuilder} with a specific
+     * environment
+     */
     protected SQLiteSyncBuilder(IEnvironment environment) {
         super(environment);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
     @Override
     public void onModelCreate(IDatabase db, IDatabase.Modeling modeling) {
         // -- CloudyClient
-        modeling.add(IClientRevision.TABLE_NAME)
+        modeling.add(ILocalConfiguration.TABLE_NAME)
                 .addPrimaryKey("Id")
                 .addInteger("SyncId")
-                .addInteger("ClientId", "unique")
-                .addInteger("Revision")
+                .addText("Name", "unique")
+                .addText("Value")
                 .index("Id", "SyncId")
                 .ifNotExists();
 
