@@ -17,7 +17,7 @@ import com.example.TestDbBuilder;
 
 import java.io.File;
 
-public class SyncProviderTest extends UsingExternalDriveTestCase {
+public class IncrementProviderTest extends UsingExternalDriveTestCase {
 
     SyncProvider provider;
     IEnvironment remote;
