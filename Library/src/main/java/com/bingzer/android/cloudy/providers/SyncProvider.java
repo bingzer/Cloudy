@@ -1,11 +1,14 @@
-package com.bingzer.android.cloudy;
+package com.bingzer.android.cloudy.providers;
 
 import android.database.Cursor;
 import android.util.Log;
 
 import com.bingzer.android.Timespan;
-import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
+import com.bingzer.android.cloudy.SQLiteSyncBuilder;
+import com.bingzer.android.cloudy.SyncEntity;
+import com.bingzer.android.cloudy.SyncException;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
@@ -24,14 +27,14 @@ class SyncProvider implements ISyncProvider {
     static final int UPSTREAM = 1;
     static final int DOWNSTREAM = 2;
 
-    private IEnvironment remote;
-    private IEnvironment local;
-    private ISyncManager manager;
+    private final IEnvironment remote;
+    private final IEnvironment local;
+    private final ISyncManager manager;
 
-    SyncProvider(ISyncManager manager, IEnvironment local, IEnvironment remote){
+    SyncProvider(ISyncManager manager){
         this.manager = manager;
-        this.local = local;
-        this.remote = remote;
+        this.local = manager.getLocalEnvironment();
+        this.remote = manager.getRemoteEnvironment();
     }
 
     @Override
@@ -61,12 +64,6 @@ class SyncProvider implements ISyncProvider {
             counter.value += affected.value;
             Log.d(TAG, "SyncCounter RemoteToLocal(EntityHistory) = " + counter.value);
 
-            // Client REVISION (Local only)
-            Log.d(TAG, "Updating LocalConfiguration's Revision to: " + range.to);
-            ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
-            config.setValue(range.to);
-            config.save();
-
             Log.i(TAG, "Total SyncCounter = " + counter.value);
 
             return range.to;
@@ -89,7 +86,7 @@ class SyncProvider implements ISyncProvider {
 
     private Counter syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
         final Counter counter = new Counter();
-        final IEntityHistory syncHistory = new EntityHistory(destination);
+        final IEntityHistory syncHistory = manager.createEntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
@@ -104,7 +101,7 @@ class SyncProvider implements ISyncProvider {
 
     private Counter syncEntityHistory(TimeRange range, final IEnvironment source, final IEnvironment destination){
         final Counter counter = new Counter();
-        final IEntityHistory syncHistory = new EntityHistory(destination);
+        final IEntityHistory syncHistory = manager.createEntityHistory(destination);
         source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
                 .orderBy("Timestamp")
                 .query(new ISequence<Cursor>() {
@@ -142,25 +139,35 @@ class SyncProvider implements ISyncProvider {
 
         switch (syncHistory.getEntityAction()) {
             case IEntityHistory.INSERT:
-                sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-                destinationTable.insert(syncEntity);
+                // only insert if it exists on the source table
+                // the record may be removed
+                if(sourceTable.has("SyncId = ?", syncHistory.getEntitySyncId())) {
+                    sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
 
-                create(streamType, syncEntity);
+                    // then check if the destination table already has this entity
+                    if(destinationTable.has("SyncId = ?", syncEntity.getSyncId())) {
+                        destinationTable.insert(syncEntity);
+                        create(streamType, syncEntity);
+                    }
+                }
+                break;
+            case IEntityHistory.UPDATE:
+                if(sourceTable.has("SyncId = ?", syncHistory.getEntitySyncId())){
+                    sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
+
+                    ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
+                    if(destinationTable.has("SyncId = ?", syncHistory.getEntitySyncId())){
+                        destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(destEntity);
+
+                        update(streamType, syncEntity, destEntity);
+                        destinationTable.update(syncEntity);
+                    }
+                }
                 break;
             case IEntityHistory.DELETE:
-                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
                 destinationTable.delete("SyncId = ?", syncHistory.getEntitySyncId());
 
                 delete(streamType, syncEntity);
-                break;
-            case IEntityHistory.UPDATE:
-                sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-
-                ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
-                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(destEntity);
-
-                update(streamType, syncEntity, destEntity);
-                destinationTable.update(syncEntity);
                 break;
         }
 
@@ -321,19 +328,4 @@ class SyncProvider implements ISyncProvider {
         return entity.getLocalFiles() != null && entity.getLocalFiles().length > 0;
     }
 
-
-    ////////////////////////////////////////////////////////////////////////////////////////////
-
-    private static class TimeRange {
-        long from;
-        long to;
-        TimeRange(long from, long to){
-            this.from = from;
-            this.to = to;
-        }
-    }
-
-    private static class Counter {
-        long value = 0;
-    }
 }

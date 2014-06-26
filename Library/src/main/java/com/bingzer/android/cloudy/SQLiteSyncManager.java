@@ -6,8 +6,11 @@ import android.util.Log;
 import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
+import com.bingzer.android.cloudy.contracts.IEntityHistory;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
+import com.bingzer.android.cloudy.providers.SyncProviderFactory;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
@@ -28,25 +31,59 @@ public class SQLiteSyncManager implements ISyncManager {
 
     private long lockTimeout;
 
-    private Context context;
-    private IEnvironment local;
+    private final Context context;
+    private final IEnvironment local;
 
-    private RemoteFile root;
+    private final RemoteFile root;
+    private final RemoteFile remoteDbFile;
     private RemoteFile revisionFile;   // 1321346465.revision
     private RemoteFile lockFile;       // 1231465466.lock
     private List<RemoteFile> rootChildren;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    public SQLiteSyncManager(Context context, IEnvironment local, RemoteFile root){
+    public SQLiteSyncManager(Context context, IEnvironment local, RemoteFile root, RemoteFile remoteDbFile){
         if(!root.isDirectory()) throw new SyncException("root must be a directory");
         this.root = root;
+        this.remoteDbFile = remoteDbFile;
         this.context = context.getApplicationContext();
         this.local = local;
         LocalConfiguration.seedConfigs(local);
 
         lockTimeout = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_LOCK_TIMEOUT).getValueAsLong();
         rootChildren = getRootChildren(true);
+    }
+
+    @Override
+    public IEnvironment getLocalEnvironment() {
+        return local;
+    }
+
+    @Override
+    public IEnvironment getRemoteEnvironment() {
+        Log.i(TAG, "- Creating remote environment in the cache");
+        IEnvironment environment = null;
+        try{
+            IDatabase localDb = local.getDatabase();
+            final LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
+
+            Log.i(TAG, "Downloading remote db file");
+            remoteDbFile.download(dbLocalFile);
+
+            Log.i(TAG, "Opening remote for future use");
+            final IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
+            db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
+
+            return (environment = new Environment(db));
+        }
+        finally {
+            Log.i(TAG, "- Creating remote environment = " + (environment != null));
+        }
+    }
+
+    @Override
+    public IEntityHistory createEntityHistory(IEnvironment environment) {
+        return new EntityHistory(environment);
     }
 
     /**
@@ -57,19 +94,21 @@ public class SQLiteSyncManager implements ISyncManager {
         return root;
     }
 
+    @Override
+    public RemoteFile getRemoteDbFile() {
+        return remoteDbFile;
+    }
+
     /**
      * Sync database
-     * @param dbRemoteFile dbRemote file
      */
     @Override
-    public void syncDatabase(RemoteFile dbRemoteFile) throws SyncException {
-        if(dbRemoteFile == null) throw new NullPointerException("dbRemoteFile");
-
-        Log.i(TAG, "----- Starting syncDatabase()");
+    public void syncDatabase(int syncType) throws SyncException {
+        Log.i(TAG, "----- Starting syncDatabase(). SyncType = " + syncType);
         try{
             long revision = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_REVISION).getValueAsLong();
 
-            doSync(revision, dbRemoteFile);
+            doSync(syncType, revision);
         }
         catch (Exception e){
             Log.e(TAG, "----- " + e.getMessage());
@@ -198,8 +237,17 @@ public class SQLiteSyncManager implements ISyncManager {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    private void doSync(long revision, RemoteFile dbRemoteFile){
-        Log.d(TAG, "dbRemoteFile = " + dbRemoteFile.getName());
+    private List<RemoteFile> getRootChildren(boolean refresh){
+        if(refresh) rootChildren = null;
+
+        if(rootChildren == null)
+            return root.list();
+        return rootChildren;
+    }
+
+    private void doSync(int syncType, long revision){
+        Log.d(TAG, "doSync()");
+        Log.d(TAG, "dbRemoteFile = " + remoteDbFile.getName());
         Log.d(TAG, "revision = " + revision);
 
         ISyncProvider syncProvider = null;
@@ -209,10 +257,14 @@ public class SQLiteSyncManager implements ISyncManager {
 
             ensureRevisionExists();
 
-            IEnvironment remote = createRemoteEnvironment(dbRemoteFile);
-
-            syncProvider = new SyncProvider(this, local, remote);
+            syncProvider = SyncProviderFactory.getSyncProvider(this, syncType);
             long newTimestamp = syncProvider.sync(revision);
+
+            // Client REVISION (Local only)
+            Log.d(TAG, "Updating LocalConfiguration's Revision to: " + newTimestamp);
+            ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
+            config.setValue(newTimestamp);
+            config.save();
 
             if(!revisionFile.rename(newTimestamp + ".revision"))
                 throw new SyncException("Failed to commit new revision");
@@ -223,35 +275,6 @@ public class SQLiteSyncManager implements ISyncManager {
             if(syncProvider != null)
                 syncProvider.cleanup();
         }
-    }
-
-    private IEnvironment createRemoteEnvironment(RemoteFile remoteDbFile){
-        Log.i(TAG, "- Creating remote environment in the cache");
-        IEnvironment environment = null;
-        try{
-            IDatabase localDb = local.getDatabase();
-            final LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
-
-            Log.i(TAG, "Downloading remote db file");
-            remoteDbFile.download(dbLocalFile);
-
-            Log.i(TAG, "Opening remote for future use");
-            final IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
-            db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
-
-            return (environment = new Environment(db));
-        }
-        finally {
-            Log.i(TAG, "- Creating remote environment = " + (environment != null));
-        }
-    }
-
-    private List<RemoteFile> getRootChildren(boolean refresh){
-        if(refresh) rootChildren = null;
-
-        if(rootChildren == null)
-            return root.list();
-        return rootChildren;
     }
 
 }

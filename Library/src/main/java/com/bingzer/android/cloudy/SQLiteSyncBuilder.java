@@ -69,6 +69,6 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
      * This method will be called when {@link SQLiteSyncManager}
      * requires to create a sample type of {@code ISyncEntity} to populate the data with.
      */
-    protected abstract ISyncEntity onEntityCreate(IEnvironment environment, String tableName);
+    public abstract ISyncEntity onEntityCreate(IEnvironment environment, String tableName);
 
 }

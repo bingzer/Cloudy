@@ -5,6 +5,7 @@ import android.database.Cursor;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
+import com.bingzer.android.cloudy.providers.SyncProvider;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
