@@ -15,10 +15,20 @@ public interface ISyncManager {
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Returns the local environment
+     */
     IEnvironment getLocalEnvironment();
 
+    /**
+     * Returns the remote environment from {@link #getRemoteDbFile()}
+     * @see #getRemoteDbFile()
+     */
     IEnvironment getRemoteEnvironment();
 
+    /**
+     * Creates an IEntityHistory
+     */
     IEntityHistory createEntityHistory(IEnvironment environment);
 
     /**
@@ -26,6 +36,10 @@ public interface ISyncManager {
      */
     RemoteFile getRoot();
 
+    /**
+     * Returns the remote database file
+     * @see #getRemoteEnvironment()
+     */
     RemoteFile getRemoteDbFile();
 
     /**
