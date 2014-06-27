@@ -33,6 +33,7 @@ public class SQLiteSyncManager implements ISyncManager {
 
     private final Context context;
     private final IEnvironment local;
+    private final IEnvironment remote;
 
     private final RemoteFile root;
     private final RemoteFile remoteDbFile;
@@ -48,6 +49,7 @@ public class SQLiteSyncManager implements ISyncManager {
         this.remoteDbFile = remoteDbFile;
         this.context = context.getApplicationContext();
         this.local = local;
+        this.remote = createRemoteEnvironment();
         LocalConfiguration.seedConfigs(local);
 
         lockTimeout = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_LOCK_TIMEOUT).getValueAsLong();
@@ -61,24 +63,7 @@ public class SQLiteSyncManager implements ISyncManager {
 
     @Override
     public IEnvironment getRemoteEnvironment() {
-        Log.i(TAG, "- Creating remote environment in the cache");
-        IEnvironment environment = null;
-        try{
-            IDatabase localDb = local.getDatabase();
-            final LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
-
-            Log.i(TAG, "Downloading remote db file");
-            remoteDbFile.download(dbLocalFile);
-
-            Log.i(TAG, "Opening remote for future use");
-            final IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
-            db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
-
-            return (environment = new Environment(db));
-        }
-        finally {
-            Log.i(TAG, "- Creating remote environment = " + (environment != null));
-        }
+        return remote;
     }
 
     @Override
@@ -121,6 +106,32 @@ public class SQLiteSyncManager implements ISyncManager {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    IEnvironment createRemoteEnvironment(){
+        Log.i(TAG, "- Creating remote environment in the cache");
+        IEnvironment environment = null;
+        try{
+            final IDatabase localDb = local.getDatabase();
+
+            Log.i(TAG, "Downloading remote db file");
+            final LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
+            remoteDbFile.download(dbLocalFile);
+
+            Log.i(TAG, "Opening remote for future use");
+            final IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
+            try {
+                db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
+            }
+            catch (Exception e){
+                Exception catchme = e;
+            }
+
+            return (environment = new Environment(db));
+        }
+        finally {
+            Log.i(TAG, "- Creating remote environment = " + (environment != null));
+        }
+    }
 
     RemoteFile ensureRevisionExists(){
         revisionFile = null;

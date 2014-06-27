@@ -4,11 +4,13 @@ import com.bingzer.android.Parser;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
+import com.bingzer.android.cloudy.contracts.ISyncManager;
+import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
+import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
-import com.example.Person;
 import com.example.TestDbBuilder;
 
 import java.io.File;
@@ -18,7 +20,10 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot);
+        IDatabase localDb = DbQuery.getDatabase("SQLiteSyncManagerTest-Local");
+        localDb.open(1, new TestDbBuilder(getContext()));
+
+        manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot, remoteDbFile);
     }
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +42,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
 
         // -- mocking other client is syncing
         try{
-            manager.syncDatabase(remoteDbFile);
+            manager.syncDatabase(ISyncManager.SYNC_INCREMENT);
             fail("Should throw exception");
         }
         catch (SyncException e){
@@ -53,7 +58,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
         lockFile = storageProvider.create(remoteRoot, new LocalFile(f));
 
         try{
-            manager.syncDatabase(remoteDbFile);
+            manager.syncDatabase(ISyncManager.SYNC_INCREMENT);
             assertTrue("Good", true);
         }
         catch (SyncException e){
@@ -82,7 +87,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
     }
 
     public void test_shouldNotSync() throws Exception {
-        manager.syncDatabase(remoteDbFile);
+        manager.syncDatabase(ISyncManager.SYNC_INCREMENT);
 
         long existingTimestamp = 0;
         for(RemoteFile child : remoteRoot.list()){
@@ -100,7 +105,7 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
             config.setValue(existingTimestamp);
             assertTrue(config.save());
 
-            manager.syncDatabase(remoteDbFile);
+            manager.syncDatabase(ISyncManager.SYNC_INCREMENT);
             fail("Should throw syncexception");
         }
         catch (SyncException e){

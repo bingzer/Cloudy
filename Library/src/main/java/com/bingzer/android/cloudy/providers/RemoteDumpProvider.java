@@ -5,14 +5,10 @@ import android.util.Log;
 
 import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.SQLiteSyncBuilder;
-import com.bingzer.android.cloudy.SyncEntity;
-import com.bingzer.android.cloudy.SyncException;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
-import com.bingzer.android.dbv.IBaseEntity;
-import com.bingzer.android.dbv.IEnvironment;
-import com.bingzer.android.dbv.ITable;
+import com.bingzer.android.dbv.queries.ISequence;
 
 /**
  * This is the provider when the remote has an empty (no database) yet
@@ -36,7 +32,7 @@ class RemoteDumpProvider extends AbsSyncProvider {
             Counter counter = new Counter();
 
             // Entity (Local to Remote)
-            Counter affected = syncEnvironment(UPSTREAM, range, local, remote);
+            Counter affected = syncLocalFilesToRemote();
             counter.value += affected.value;
             Log.d(getName(), "SyncCounter LocalToRemote(Entity) = " + counter.value);
 
@@ -51,30 +47,35 @@ class RemoteDumpProvider extends AbsSyncProvider {
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
+    protected Counter syncLocalFilesToRemote(){
+        final IEntityHistory syncHistory = manager.createEntityHistory(remote);
+        final Counter counter = new Counter();
+        local.getDatabase().get(IEntityHistory.TABLE_NAME).select()
+                .orderBy("Timestamp")
+                .query(new ISequence<Cursor>() {
+                    @Override
+                    public boolean next(Cursor cursor) {
+                        counter.value++;
+                        syncHistory.load(cursor);
 
-    protected boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment destination, IEntityHistory syncHistory, Cursor cursor){
-        syncHistory.load(cursor);
+                        SQLiteSyncBuilder builder = (SQLiteSyncBuilder) remote.getDatabase().getBuilder();
+                        ISyncEntity syncEntity = builder.onEntityCreate(remote, syncHistory.getTableName());
 
-        SQLiteSyncBuilder builder = (SQLiteSyncBuilder)source.getDatabase().getBuilder();
+                        switch (syncHistory.getEntityAction()) {
+                            case IEntityHistory.INSERT:
+                                create(UPSTREAM, syncEntity);
+                                break;
+                            case IEntityHistory.UPDATE:
+                                update(UPSTREAM, syncEntity, null);
+                                break;
+                            case IEntityHistory.DELETE:
+                                delete(UPSTREAM, syncEntity);
+                                break;
+                        }
 
-        IBaseEntity entity = builder.onEntityCreate(source, syncHistory.getEntityName());
-        if(!(entity instanceof SyncEntity))
-            throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
-        ISyncEntity syncEntity = (ISyncEntity) entity;
-
-        switch (syncHistory.getEntityAction()) {
-            case IEntityHistory.INSERT:
-                create(streamType, syncEntity);
-                break;
-            case IEntityHistory.UPDATE:
-                ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
-                update(streamType, syncEntity, destEntity);
-                break;
-            case IEntityHistory.DELETE:
-                delete(streamType, syncEntity);
-                break;
-        }
-
-        return true;
+                        return true;
+                    }
+                });
+        return counter;
     }
 }

@@ -26,7 +26,7 @@ public class TestDbBuilder extends SQLiteSyncBuilder {
     }
 
     @Override
-    protected ISyncEntity onEntityCreate(IEnvironment environment, String tableName) {
+    public ISyncEntity onEntityCreate(IEnvironment environment, String tableName) {
         if(tableName.equalsIgnoreCase("Person"))
             return new Person(environment);
         return null;

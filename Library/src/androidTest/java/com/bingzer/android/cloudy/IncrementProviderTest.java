@@ -5,7 +5,9 @@ import android.database.Cursor;
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
-import com.bingzer.android.cloudy.providers.SyncProvider;
+import com.bingzer.android.cloudy.contracts.ISyncManager;
+import com.bingzer.android.cloudy.contracts.ISyncProvider;
+import com.bingzer.android.cloudy.providers.SyncProviderFactory;
 import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
@@ -19,9 +21,8 @@ import java.io.File;
 
 public class IncrementProviderTest extends UsingExternalDriveTestCase {
 
-    SyncProvider provider;
-    IEnvironment remote;
-    IEnvironment local;
+    ISyncProvider provider;
+    IEnvironment local, remote;
     long syncTimestamp;
     File image1, image2, image3, image4, image5;
 
@@ -36,10 +37,11 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
         remoteDb.open(1, new TestDbBuilder(getContext()));
 
         local = new Environment(localDb);
-        remote = new Environment(remoteDb);
 
-        manager = new SQLiteSyncManager(getContext(), local, remoteRoot);
-        provider = new SyncProvider(manager, local, remote);
+        manager = new SQLiteSyncManager(getContext(), local, remoteRoot, remoteDbFile);
+        provider = SyncProviderFactory.getSyncProvider(manager, ISyncManager.SYNC_INCREMENT);
+
+        remote = manager.getRemoteEnvironment();
 
         // we need to extract all images from assets to files dir
         File imageDir = new File(getContext().getFilesDir(), "images");
@@ -66,8 +68,10 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
     protected void tearDown() throws Exception {
         super.tearDown();
 
-        remote.getDatabase().close();
-        local.getDatabase().close();
+        if(remote.getDatabase() != null)
+            remote.getDatabase().close();
+        if(local.getDatabase() != null)
+            local.getDatabase().close();
         // delete databases
         getContext().deleteDatabase("SyncProviderTest-Local");
         getContext().deleteDatabase("SyncProviderTest-Remote");

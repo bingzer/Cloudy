@@ -8,7 +8,7 @@ public interface ISyncProvider {
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    long sync(long lastTimestamp) throws SyncException;
+    long sync(long timestamp) throws SyncException;
 
     void cleanup();
 
