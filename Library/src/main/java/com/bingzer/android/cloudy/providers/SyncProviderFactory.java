@@ -9,6 +9,7 @@ public final class SyncProviderFactory {
         switch (syncType){
             case ISyncManager.SYNC_INCREMENT: return new IncrementProvider(manager);
             case ISyncManager.SYNC_DUMP_TO_REMOTE: return new RemoteDumpProvider(manager);
+            case ISyncManager.SYNC_DUMP_TO_LOCAL: return new LocalDumpProvider(manager);
         }
 
         throw new UnsupportedOperationException("Not supported sync type: " + syncType);
