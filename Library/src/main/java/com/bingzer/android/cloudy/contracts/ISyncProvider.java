@@ -10,6 +10,6 @@ public interface ISyncProvider {
 
     long sync(long timestamp) throws SyncException;
 
-    void cleanup();
+    void close();
 
 }

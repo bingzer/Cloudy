@@ -1,5 +1,7 @@
 package com.bingzer.android.cloudy;
 
+import android.content.Context;
+
 import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
@@ -71,4 +73,34 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
      */
     public abstract ISyncEntity onEntityCreate(IEnvironment environment, String tableName);
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    public static class Copy extends SQLiteSyncBuilder {
+
+        private SQLiteSyncBuilder builder;
+
+        public Copy(SQLiteSyncBuilder builder) {
+            this.builder = builder;
+        }
+
+        @Override
+        public Context getContext() {
+            return builder.getContext();
+        }
+
+        @Override
+        public void onModelCreate(IDatabase database, IDatabase.Modeling modeling) {
+            // do nothing
+        }
+
+        @Override
+        public ISyncEntity onEntityCreate(IEnvironment environment, String tableName) {
+            return builder.onEntityCreate(environment, tableName);
+        }
+
+        @Override
+        public void onReady(IDatabase database) {
+            // do not called super.onReady()
+        }
+    }
 }

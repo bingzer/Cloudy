@@ -19,11 +19,12 @@ public class SQLiteSyncManagerTest extends UsingExternalDriveTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-
-        IDatabase localDb = DbQuery.getDatabase("SQLiteSyncManagerTest-Local");
-        localDb.open(1, new TestDbBuilder(getContext()));
-
         manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot, remoteDbFile);
+    }
+
+    @Override
+    public String getLocalDatabaseName() {
+        return "SQLiteSyncManagerTest";
     }
 
     /////////////////////////////////////////////////////////////////////////////////

@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.bingzer.android.cloudy.SQLiteSyncBuilder;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
+import com.bingzer.android.dbv.Environment;
 import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
 

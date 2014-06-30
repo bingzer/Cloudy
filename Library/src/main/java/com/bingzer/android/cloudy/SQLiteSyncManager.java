@@ -40,6 +40,7 @@ public class SQLiteSyncManager implements ISyncManager {
     private RemoteFile revisionFile;   // 1321346465.revision
     private RemoteFile lockFile;       // 1231465466.lock
     private List<RemoteFile> rootChildren;
+    private ISyncProvider syncProvider;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,6 +55,11 @@ public class SQLiteSyncManager implements ISyncManager {
 
         lockTimeout = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_LOCK_TIMEOUT).getValueAsLong();
         rootChildren = getRootChildren(true);
+    }
+
+    @Override
+    public Context getContext() {
+        return context;
     }
 
     @Override
@@ -93,7 +99,7 @@ public class SQLiteSyncManager implements ISyncManager {
         try{
             long revision = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_REVISION).getValueAsLong();
 
-            doSync(syncType, revision);
+            syncProvider = doSync(syncType, revision);
         }
         catch (Exception e){
             Log.e(TAG, "----- " + e.getMessage());
@@ -103,6 +109,13 @@ public class SQLiteSyncManager implements ISyncManager {
         finally {
             Log.i(TAG, "----- End of syncDatabase()");
         }
+    }
+
+    @Override
+    public void close() {
+        if(syncProvider == null)
+            throw new SyncException("syncDatabase() is not yet called");
+        syncProvider.close();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,16 +128,14 @@ public class SQLiteSyncManager implements ISyncManager {
 
             Log.i(TAG, "Downloading remote db file");
             final LocalFile dbLocalFile = new LocalFile(new File(context.getCacheDir(), remoteDbFile.getName()));
-            remoteDbFile.download(dbLocalFile);
+            if(!remoteDbFile.download(dbLocalFile))
+                throw new RuntimeException("Failed to download");
 
             Log.i(TAG, "Opening remote for future use");
             final IDatabase db = DbQuery.getDatabase(localDb.getName() + "-remote");
-            try {
-                db.open(localDb.getVersion(), dbLocalFile.getFile().getAbsolutePath(), localDb.getBuilder());
-            }
-            catch (Exception e){
-                Exception catchme = e;
-            }
+            db.open(localDb.getVersion(),
+                    dbLocalFile.getFile().getAbsolutePath(),
+                    new SQLiteSyncBuilder.Copy((SQLiteSyncBuilder) localDb.getBuilder()));
 
             return (environment = new Environment(db));
         }
@@ -256,36 +267,31 @@ public class SQLiteSyncManager implements ISyncManager {
         return rootChildren;
     }
 
-    private void doSync(int syncType, long revision){
+    private ISyncProvider doSync(int syncType, long revision){
         Log.d(TAG, "doSync()");
         Log.d(TAG, "dbRemoteFile = " + remoteDbFile.getName());
         Log.d(TAG, "revision = " + revision);
 
-        ISyncProvider syncProvider = null;
-        try{
-            if(!shouldSync(revision)) throw new SyncException.NoChanges();
-            if(!acquireLock()) throw new SyncException.OtherIsSyncing();
+        if(!shouldSync(revision)) throw new SyncException.NoChanges();
+        if(!acquireLock()) throw new SyncException.OtherIsSyncing();
 
-            ensureRevisionExists();
+        ensureRevisionExists();
 
-            syncProvider = SyncProviderFactory.getSyncProvider(this, syncType);
-            long newTimestamp = syncProvider.sync(revision);
+        ISyncProvider syncProvider = SyncProviderFactory.getSyncProvider(this, syncType);
+        long newTimestamp = syncProvider.sync(revision);
 
-            // Client REVISION (Local only)
-            Log.d(TAG, "Updating LocalConfiguration's Revision to: " + newTimestamp);
-            ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
-            config.setValue(newTimestamp);
-            config.save();
+        // Client REVISION (Local only)
+        Log.d(TAG, "Updating LocalConfiguration's Revision to: " + newTimestamp);
+        ILocalConfiguration config = LocalConfiguration.getConfig(local, LocalConfiguration.SETTING_CLIENTID);
+        config.setValue(newTimestamp);
+        config.save();
 
-            if(!revisionFile.rename(newTimestamp + ".revision"))
-                throw new SyncException("Failed to commit new revision");
-            if(!lockFile.delete())
-                throw new SyncException("Failed to delete lock");
-        }
-        finally {
-            if(syncProvider != null)
-                syncProvider.cleanup();
-        }
+        if(!revisionFile.rename(newTimestamp + ".revision"))
+            throw new SyncException("Failed to commit new revision");
+        if(!lockFile.delete())
+            throw new SyncException("Failed to delete lock");
+
+        return syncProvider;
     }
 
 }

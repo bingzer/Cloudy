@@ -24,9 +24,9 @@ abstract class AbsSyncProvider implements ISyncProvider{
     }
 
     @Override
-    public void cleanup() {
+    public void close() {
         File db = new File(remote.getDatabase().getPath());
-        // cleanup
+        // close
         remote.getDatabase().close();
         if(!db.delete())
             Log.e(getName(), "Cleanup() - failed to delete remote db");

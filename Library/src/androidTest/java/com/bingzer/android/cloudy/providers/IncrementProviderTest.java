@@ -1,21 +1,19 @@
-package com.bingzer.android.cloudy;
+package com.bingzer.android.cloudy.providers;
 
 import android.database.Cursor;
 
 import com.bingzer.android.Path;
 import com.bingzer.android.Timespan;
+import com.bingzer.android.cloudy.SQLiteSyncManager;
+import com.bingzer.android.cloudy.UsingExternalDriveTestCase;
 import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
 import com.bingzer.android.cloudy.contracts.ISyncProvider;
-import com.bingzer.android.cloudy.providers.SyncProviderFactory;
-import com.bingzer.android.dbv.DbQuery;
 import com.bingzer.android.dbv.Environment;
-import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.LocalFile;
 import com.bingzer.android.driven.RemoteFile;
 import com.example.Person;
-import com.example.TestDbBuilder;
 
 import java.io.File;
 
@@ -31,16 +29,10 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
         super.setUp();
 
         syncTimestamp = Timespan.now();
-        IDatabase localDb = DbQuery.getDatabase("SyncProviderTest-Local");
-        localDb.open(1, new TestDbBuilder(getContext()));
-        IDatabase remoteDb = DbQuery.getDatabase("SyncProviderTest-Remote");
-        remoteDb.open(1, new TestDbBuilder(getContext()));
 
-        local = new Environment(localDb);
-
-        manager = new SQLiteSyncManager(getContext(), local, remoteRoot, remoteDbFile);
+        manager = new SQLiteSyncManager(getContext(), Environment.getLocalEnvironment(), remoteRoot, remoteDbFile);
         provider = SyncProviderFactory.getSyncProvider(manager, ISyncManager.SYNC_INCREMENT);
-
+        local = manager.getLocalEnvironment();
         remote = manager.getRemoteEnvironment();
 
         // we need to extract all images from assets to files dir
@@ -65,6 +57,11 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
     }
 
     @Override
+    public String getLocalDatabaseName() {
+        return "SyncProviderTest";
+    }
+
+    @Override
     protected void tearDown() throws Exception {
         super.tearDown();
 
@@ -73,7 +70,7 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
         if(local.getDatabase() != null)
             local.getDatabase().close();
         // delete databases
-        getContext().deleteDatabase("SyncProviderTest-Local");
+        getContext().deleteDatabase("SyncProviderTest");
         getContext().deleteDatabase("SyncProviderTest-Remote");
     }
 
@@ -82,7 +79,7 @@ public class IncrementProviderTest extends UsingExternalDriveTestCase {
         provider.sync(syncTimestamp);
         assertTrue(remoteDb.exists());
 
-        provider.cleanup();
+        provider.close();
         assertFalse(remoteDb.exists());
     }
 
