@@ -84,7 +84,13 @@ abstract class AbsSyncProvider implements ISyncProvider{
             for(File file : entity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
                 localFile.setName(createRemoteFileNameForLocalFile(entity, file));
-                RemoteFile remoteFile = remoteDir.create(localFile);
+
+                RemoteFile remoteFile = remoteDir.get(localFile.getName());
+                if(remoteFile != null)
+                    remoteFile.upload(localFile);
+                else
+                    remoteFile = remoteDir.create(localFile);
+
                 if(remoteFile == null) {
                     Log.e(getName(), "Unable to create RemoteFile: " + localFile.getName());
                 }
@@ -114,7 +120,7 @@ abstract class AbsSyncProvider implements ISyncProvider{
             for(File file : entity.getLocalFiles()){
                 String filename = createRemoteFileNameForLocalFile(entity, file);
                 RemoteFile remoteFile = remoteDir.get(filename);
-                if(!remoteFile.delete())
+                if(remoteFile != null && !remoteFile.delete())
                     Log.e(getName(), "Unable to delete: " + file.getName());
             }
         }
