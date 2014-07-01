@@ -137,6 +137,7 @@ abstract class AbsSyncProvider implements ISyncProvider{
     }
 
     private void updateUpstream(ISyncEntity srcEntity, ISyncEntity destEntity){
+        /*
         if(destEntity != null && hasLocalFiles(destEntity)){
             RemoteFile remoteDir = getRemoteDirectory(destEntity);
 
@@ -145,6 +146,7 @@ abstract class AbsSyncProvider implements ISyncProvider{
                 remoteDir.get(filename).delete();
             }
         }
+        */
 
         if(hasLocalFiles(srcEntity)){
             RemoteFile remoteDir = getRemoteDirectory(srcEntity);
@@ -152,7 +154,16 @@ abstract class AbsSyncProvider implements ISyncProvider{
             for(File file : srcEntity.getLocalFiles()){
                 LocalFile localFile = new LocalFile(file);
                 localFile.setName(createRemoteFileNameForLocalFile(srcEntity, file));
-                remoteDir.create(localFile);
+
+                RemoteFile remoteFile = remoteDir.get(localFile.getName());
+                if(remoteFile != null)
+                    remoteFile.upload(localFile);
+                else
+                    remoteFile = remoteDir.create(localFile);
+
+                if(remoteFile == null) {
+                    Log.e(getName(), "Unable to create RemoteFile: " + localFile.getName());
+                }
             }
         }
     }
