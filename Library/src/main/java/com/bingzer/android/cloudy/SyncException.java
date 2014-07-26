@@ -28,7 +28,7 @@ public class SyncException extends RuntimeException {
     /**
      * Thrown when sync is not necessary. Everything is up-to-date
      */
-    public static class NoChanges extends SyncException {
+    public static class NoChanges extends com.bingzer.android.cloudy.SyncException {
         public NoChanges() {
             super("No changes detected");
         }
@@ -40,7 +40,7 @@ public class SyncException extends RuntimeException {
      * Thrown when other client is syncing first.
      * We must yield.
      */
-    public static class OtherIsSyncing extends SyncException {
+    public static class OtherIsSyncing extends com.bingzer.android.cloudy.SyncException {
         public OtherIsSyncing() {
             super("Other client is syncing. Must yield.");
         }

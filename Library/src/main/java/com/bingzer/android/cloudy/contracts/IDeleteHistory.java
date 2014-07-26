@@ -7,37 +7,14 @@ package com.bingzer.android.cloudy.contracts;
  * is performed by calling
  * {@link com.bingzer.android.cloudy.contracts.ISyncEntity#save()}
  */
-public interface IEntityHistory extends ISystemEntity {
+public interface IDeleteHistory extends ISystemEntity {
 
     /**
      * Table name
      */
-    String TABLE_NAME = "EntityHistory";
-
-    /**
-     * INSERT operation
-     */
-    int INSERT = 0;
-
-    /**
-     * DELETE operation
-     */
-    int DELETE = 1;
-
-    /**
-     * UPDATE oepration
-     */
-    int UPDATE = 2;
+    String TABLE_NAME = "DeleteHistory";
 
     //////////////////////////////////////////////////////////////////
-
-    /**
-     * What type of actions? INSERT, DELETE or UPDATE
-     * @see #INSERT
-     * @see #UPDATE
-     * @see #DELETE
-     */
-    int getEntityAction();
 
     /**
      * Actor table name.
@@ -53,6 +30,6 @@ public interface IEntityHistory extends ISystemEntity {
     /**
      * WHEN the action is performed
      */
-    long getTimestamp();
+    long getLastUpdated();
 
 }

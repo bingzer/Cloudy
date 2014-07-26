@@ -25,8 +25,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
         return name;
     }
 
-    public void setName(String name) {
+    public ILocalConfiguration setName(String name) {
         this.name = name;
+        return this;
     }
 
     public String getValue() {
@@ -36,8 +37,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void setValue(long value) {
+    public ILocalConfiguration setValue(long value) {
         setValue(String.valueOf(value));
+        return this;
     }
 
     @Override
@@ -46,8 +48,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
     }
 
     @Override
-    public void setValue(boolean value) {
+    public ILocalConfiguration setValue(boolean value) {
         setValue(String.valueOf(value));
+        return this;
     }
 
     @Override
@@ -56,8 +59,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
     }
 
     @Override
-    public void setValue(int value) {
+    public ILocalConfiguration setValue(int value) {
         setValue(String.valueOf(value));
+        return this;
     }
 
     @Override
@@ -66,8 +70,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
     }
 
     @Override
-    public void setValue(double value) {
+    public ILocalConfiguration setValue(double value) {
         setValue(String.valueOf(value));
+        return this;
     }
 
     @Override
@@ -76,8 +81,9 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
     }
 
     @Override
-    public void setValue(String value) {
+    public ILocalConfiguration setValue(String value) {
         this.value = value;
+        return this;
     }
 
     @Override
@@ -119,7 +125,7 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
      */
     public static boolean hasConfig(IEnvironment env, String configName){
         ITable table = env.getDatabase().get(TABLE_NAME);
-        ILocalConfiguration config = new LocalConfiguration(env);
+        ILocalConfiguration config = new com.bingzer.android.cloudy.LocalConfiguration(env);
         config.setName(configName);
         return table.has("Name = ?", configName);
     }
@@ -129,7 +135,7 @@ public class SettingEntity extends SyncEntity implements ILocalConfiguration {
      */
     public static ILocalConfiguration getConfig(IEnvironment env, String configName){
         ITable table = env.getDatabase().get(TABLE_NAME);
-        ILocalConfiguration config = new LocalConfiguration(env);
+        ILocalConfiguration config = new com.bingzer.android.cloudy.LocalConfiguration(env);
         config.setName(configName);
 
         if(table.has("Name = ?", configName))

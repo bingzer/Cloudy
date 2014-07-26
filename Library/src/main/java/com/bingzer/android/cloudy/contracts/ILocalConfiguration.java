@@ -5,13 +5,18 @@ package com.bingzer.android.cloudy.contracts;
  * This table should not be synced to remote
  */
 public interface ILocalConfiguration extends ISystemEntity {
+
+    String TAG = "LocalConfiguration";
+    String LastSync  = "LastSync";
+    String Version   = "Version";
+
     String TABLE_NAME = "LocalConfiguration";
 
     /**
      * Sets the setting name
      * @param name the name of the setting
      */
-    void setName(String name);
+    ILocalConfiguration setName(String name);
 
     /**
      * Returns the name of the setting
@@ -23,7 +28,7 @@ public interface ILocalConfiguration extends ISystemEntity {
      * Sets the value
      * @param value the value
      */
-    void setValue(String value);
+    ILocalConfiguration setValue(String value);
 
     /**
      * Returns the value
@@ -36,7 +41,7 @@ public interface ILocalConfiguration extends ISystemEntity {
     /**
      * Sets value as long value
      */
-    void setValue(long value);
+    ILocalConfiguration setValue(long value);
 
     /**
      * Returns value as Long
@@ -46,7 +51,7 @@ public interface ILocalConfiguration extends ISystemEntity {
     /**
      * Sets a boolean value
      */
-    void setValue(boolean value);
+    ILocalConfiguration setValue(boolean value);
 
     /**
      * Returns value as boolean
@@ -56,7 +61,7 @@ public interface ILocalConfiguration extends ISystemEntity {
     /**
      * Sets an integer value
      */
-    void setValue(int value);
+    ILocalConfiguration setValue(int value);
 
     /**
      * Returns value as Integer
@@ -66,7 +71,7 @@ public interface ILocalConfiguration extends ISystemEntity {
     /**
      * Sets a double value
      */
-    void setValue(double value);
+    ILocalConfiguration setValue(double value);
 
     /**
      * Returns value as double

@@ -2,12 +2,15 @@ package com.bingzer.android.cloudy;
 
 import android.content.Context;
 
+import com.bingzer.android.cloudy.contracts.IDeleteHistory;
 import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
-import com.bingzer.android.cloudy.contracts.IEntityHistory;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.IDatabase;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.SQLiteBuilder;
+import com.bingzer.android.dbv.utils.Utils;
+
+import java.util.List;
 
 /**
  * This is the builder that should be used when building
@@ -52,32 +55,36 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
                 .addInteger("SyncId")
                 .addText("Name", "unique")
                 .addText("Value")
+                .addInteger("LastUpdated")
                 .index("Id", "SyncId")
                 .ifNotExists();
 
         // -- CloudySyncHistory
-        modeling.add(IEntityHistory.TABLE_NAME)
+        modeling.add(IDeleteHistory.TABLE_NAME)
                 .addPrimaryKey("Id")
                 .addInteger("SyncId")
-                .addInteger("EntityAction")
                 .addInteger("EntitySyncId")
                 .addText("EntityName")
-                .addInteger("Timestamp")
-                .index("Timestamp", "SyncId", "Id")
+                .addInteger("LastUpdated")
+                .index("LastUpdated", "SyncId", "Id")
                 .ifNotExists();
     }
 
     /**
-     * This method will be called when {@link SQLiteSyncManager}
+     * This method will be called when {@link com.bingzer.android.cloudy.SQLiteSyncManager}
      * requires to create a sample type of {@code ISyncEntity} to populate the data with.
      */
-    public abstract ISyncEntity onEntityCreate(IEnvironment environment, String tableName);
+    public abstract List<ISyncEntity> onEntitySynced(IEnvironment environment);
+
+    public String onCreateUniqueCondition(ISyncEntity entity) {
+        return Utils.bindArgs("SyncId = ?", entity.getSyncId());
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     public static class Copy extends SQLiteSyncBuilder {
 
-        private SQLiteSyncBuilder builder;
+        private com.bingzer.android.cloudy.SQLiteSyncBuilder builder;
 
         public Copy(SQLiteSyncBuilder builder) {
             this.builder = builder;
@@ -94,8 +101,8 @@ public abstract class SQLiteSyncBuilder extends SQLiteBuilder {
         }
 
         @Override
-        public ISyncEntity onEntityCreate(IEnvironment environment, String tableName) {
-            return builder.onEntityCreate(environment, tableName);
+        public List<ISyncEntity> onEntitySynced(IEnvironment environment) {
+            return builder.onEntitySynced(environment);
         }
 
         @Override

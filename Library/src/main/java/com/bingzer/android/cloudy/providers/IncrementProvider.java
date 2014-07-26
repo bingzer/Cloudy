@@ -3,156 +3,157 @@ package com.bingzer.android.cloudy.providers;
 import android.database.Cursor;
 import android.util.Log;
 
-import com.bingzer.android.Timespan;
+import com.bingzer.android.Path;
 import com.bingzer.android.cloudy.SQLiteSyncBuilder;
-import com.bingzer.android.cloudy.SyncEntity;
 import com.bingzer.android.cloudy.SyncException;
-import com.bingzer.android.cloudy.contracts.IEntityHistory;
+import com.bingzer.android.cloudy.contracts.IDeleteHistory;
+import com.bingzer.android.cloudy.contracts.ILocalConfiguration;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.cloudy.contracts.ISyncManager;
-import com.bingzer.android.dbv.IBaseEntity;
+import com.bingzer.android.cloudy.contracts.ISystemEntity;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.dbv.ITable;
 import com.bingzer.android.dbv.queries.ISequence;
+import com.bingzer.android.driven.LocalFile;
+
+import java.io.File;
+import java.io.IOException;
 
 class IncrementProvider extends AbsSyncProvider {
 
-    IncrementProvider(ISyncManager manager){
-        super(manager);
+    protected IncrementProvider(ISyncManager manager, IEnvironment remote) {
+        super(manager, remote);
     }
 
     @Override
-    protected String getName() {
-        return "IncrementProvider";
+    public String getName() {
+        return "MergeChangesProvider";
     }
 
     @Override
-    public long sync(long timestamp) {
-        Log.i(getName(), "Sync starting. Revision: " + timestamp);
+    protected void doSync() throws SyncException {
+        SQLiteSyncBuilder builder = (SQLiteSyncBuilder) local.getDatabase().getBuilder();
+        for(ISyncEntity entity : builder.onEntitySynced(local)){
+            if(!(entity instanceof ISystemEntity)){
+                mergeRemoteChanges(builder, entity);
+            }
+        }
+
+        // merge history table
+        mergeDeleteHistoryTable();
+
+        // We're always going to upload the db
+        // So after merging, the remote db is exactly look like a local db
+
+        // copy local db to remote
+        // the remote local-file will then be uploaded to the cloud
+        copyLocalDb();
+
+        // upload remote db
+        uploadRemoteDb();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    private void mergeRemoteChanges(final SQLiteSyncBuilder builder, final ISyncEntity entity){
+        Log.i(getName(), "Merging remote changes: " + entity.getTableName());
+        final ITable localTable = local.getDatabase().get(entity.getTableName());
+        final ITable remoteTable = remote.getDatabase().get(entity.getTableName());
+        final ITable localDelete = local.getDatabase().get(IDeleteHistory.TABLE_NAME);
+
+        // do not sync "Deleted"
+        long lastUpdated = manager.getConfig(ILocalConfiguration.LastSync).getValueAsLong();
+        remoteTable
+                .select("LastUpdated >= ? AND SyncId NOT IN (SELECT EntitySyncId FROM DeleteHistory)", lastUpdated)
+                .query(new ISequence<Cursor>() {
+            @Override public boolean next(Cursor cursor) {
+                entity.load(cursor);
+
+                String condition = builder.onCreateUniqueCondition(entity);
+                if(localTable.has(condition)){
+                    long localUpdate = localTable.select(condition).query("LastUpdated");
+                    if(localUpdate < entity.getLastUpdated())
+                        updateLocalEntity(localTable, entity);
+                }
+                else{
+                    // make sure local delete didn't flag this as a deletion
+                    if(!localDelete.has("EntitySyncId = ?", entity.getSyncId()))
+                        insertLocalEntity(localTable, entity);
+                }
+
+                return true;
+            }
+        });
+    }
+
+    private void mergeDeleteHistoryTable(){
+        Log.i(getName(), "Merging delete history table");
+        final IDeleteHistory deleteHistory = manager.createDeleteHistory(local);
+        final ITable localDelete = local.getDatabase().get(IDeleteHistory.TABLE_NAME);
+        final ITable remoteDelete = remote.getDatabase().get(IDeleteHistory.TABLE_NAME);
+
+        remoteDelete.select().query(new ISequence<Cursor>() {
+            @Override
+            public boolean next(Cursor cursor) {
+                deleteHistory.load(cursor);
+                if (!localDelete.has("SyncId = ?", deleteHistory.getSyncId())){
+                    localDelete.insert(deleteHistory);
+                    // then delete the entity
+                    deleteLocalEntity(deleteHistory);
+                }
+
+                return true;
+            }
+        });
+    }
+
+    private void deleteLocalEntity(IDeleteHistory history){
+        Log.i(getName(), "# Deleting entity from table " + history.getEntityName());
+        try {
+            local.getDatabase().get(history.getEntityName()).delete("SyncId = ?", history.getEntitySyncId());
+        }
+        catch (Exception e){
+            Log.e(getName(), "deleteLocalEntity(" + history.getEntityName() + ")", e);
+        }
+    }
+
+    private void updateLocalEntity(ITable localTable, ISyncEntity entity){
         try{
-            TimeRange range = new TimeRange(timestamp, Timespan.now());
-            Counter counter = new Counter();
-
-            // Entity (Local to Remote)
-            Counter affected = syncEnvironment(UPSTREAM, range, local, remote);
-            counter.value += affected.value;
-            Log.d(getName(), "SyncCounter LocalToRemote(Entity) = " + counter.value);
-
-            // Entity (Remote to Local)
-            affected = syncEnvironment(DOWNSTREAM, range, remote, local);
-            counter.value += affected.value;
-            Log.d(getName(), "SyncCounter RemoteToLocal(Entity) = " + counter.value);
-
-            // EntityHistory (Local to Remote)
-            affected = syncEntityHistory(range, local, remote);
-            counter.value += affected.value;
-            Log.d(getName(), "SyncCounter LocalToRemote(EntityHistory) = " + counter.value);
-
-            // EntityHistory (Remote to Local)
-            affected = syncEntityHistory(range, remote, local);
-            counter.value += affected.value;
-            Log.d(getName(), "SyncCounter RemoteToLocal(EntityHistory) = " + counter.value);
-
-            Log.i(getName(), "Total SyncCounter = " + counter.value);
-
-            return range.to;
+            localTable.update(entity);
         }
-        finally {
-            Log.i(getName(), "End of sync()");
+        catch (Exception e){
+            Log.e(getName(), "updateLocalEntity(" + localTable.getName() + ", " + entity.getTableName() + ")", e);
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    protected Counter syncEnvironment(final int streamType, TimeRange range, final IEnvironment source, final IEnvironment destination){
-        final Counter counter = new Counter();
-        final IEntityHistory syncHistory = manager.createEntityHistory(destination);
-        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
-                .orderBy("Timestamp")
-                .query(new ISequence<Cursor>() {
-                    @Override
-                    public boolean next(Cursor cursor) {
-                        counter.value ++;
-                        return syncSequence(streamType, source, destination, syncHistory, cursor);
-                    }
-                });
-        return counter;
-    }
-
-    protected Counter syncEntityHistory(TimeRange range, final IEnvironment source, final IEnvironment destination){
-        final Counter counter = new Counter();
-        final IEntityHistory syncHistory = manager.createEntityHistory(destination);
-        source.getDatabase().get(IEntityHistory.TABLE_NAME).select("Timestamp >= ? AND Timestamp < ?", range.from, range.to)
-                .orderBy("Timestamp")
-                .query(new ISequence<Cursor>() {
-                    @Override
-                    public boolean next(Cursor cursor) {
-                        counter.value++;
-
-                        syncHistory.load(cursor);
-                        if (!destination.getDatabase()
-                                .get(IEntityHistory.TABLE_NAME)
-                                .has("SyncId = ?", syncHistory.getSyncId())) {
-                            syncHistory.setId(-1);
-                            syncHistory.save();
-                        }
-                        return true;
-                    }
-                });
-        return counter;
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////
-
-    protected boolean syncSequence(final int streamType, final IEnvironment source, final IEnvironment destination, IEntityHistory syncHistory, Cursor cursor){
-        syncHistory.load(cursor);
-
-        SQLiteSyncBuilder builder = (SQLiteSyncBuilder)source.getDatabase().getBuilder();
-
-        ITable sourceTable = source.getDatabase().get(syncHistory.getEntityName());
-        ITable destinationTable = destination.getDatabase().get(syncHistory.getEntityName());
-
-        IBaseEntity entity = builder.onEntityCreate(source, syncHistory.getEntityName());
-        if(!(entity instanceof SyncEntity))
-            throw new SyncException("Entity/Table " + entity.getTableName() + " is not an instanceof SyncEntity");
-        ISyncEntity syncEntity = (ISyncEntity) entity;
-
-        switch (syncHistory.getEntityAction()) {
-            case IEntityHistory.INSERT:
-                // only insert if it exists on the source table
-                // the record may be removed
-                if(sourceTable.has("SyncId = ?", syncHistory.getEntitySyncId())) {
-                    sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-
-                    // then check if the destination table already has this entity
-                    if(!destinationTable.has("SyncId = ?", syncEntity.getSyncId())) {
-                        destinationTable.insert(syncEntity);
-                        create(streamType, syncEntity);
-                    }
-                }
-                break;
-            case IEntityHistory.UPDATE:
-                if(sourceTable.has("SyncId = ?", syncHistory.getEntitySyncId())){
-                    sourceTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-
-                    ISyncEntity destEntity = builder.onEntityCreate(destination, syncHistory.getEntityName());
-                    if(destinationTable.has("SyncId = ?", syncHistory.getEntitySyncId())){
-                        destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(destEntity);
-
-                        update(streamType, syncEntity, destEntity);
-                        destinationTable.update(syncEntity);
-                    }
-                }
-                break;
-            case IEntityHistory.DELETE:
-                destinationTable.select("SyncId = ?", syncHistory.getEntitySyncId()).query(syncEntity);
-                destinationTable.delete("SyncId = ?", syncHistory.getEntitySyncId());
-
-                delete(streamType, syncEntity);
-                break;
+    private void insertLocalEntity(ITable localTable, ISyncEntity entity){
+        try{
+            localTable.insert(entity);
         }
-
-        return true;
+        catch (Exception e){
+            Log.e(getName(), "insertLocalEntity(" + localTable.getName() + ", " + entity.getTableName() + ")", e);
+        }
     }
 
+    private void copyLocalDb() {
+        try{
+            Log.i(getName(), "Copying local db to the cache remote db");
+            Path.copyFile(new File(local.getDatabase().getPath()), new File(remote.getDatabase().getPath()));
+        }
+        catch (IOException e){
+            throw new SyncException(e);
+        }
+    }
+
+    private void uploadRemoteDb(){
+        Log.i(getName(), "Uploading to the cloud");
+        try {
+            // upload remote db to cloud to cloud
+            LocalFile dbRemoteLocalFile = new LocalFile(new File(remote.getDatabase().getPath()));
+            manager.getRemoteDbFile().upload(dbRemoteLocalFile);
+        }
+        catch (Exception e){
+            throw new SyncException(e);
+        }
+    }
 }

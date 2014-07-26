@@ -6,6 +6,8 @@ import com.bingzer.android.cloudy.SyncException;
 import com.bingzer.android.dbv.IEnvironment;
 import com.bingzer.android.driven.RemoteFile;
 
+import java.io.File;
+
 /**
  * Sync manager
  */
@@ -14,9 +16,13 @@ public interface ISyncManager {
     int SYNC_INCREMENT = 0;
     int SYNC_DUMP_TO_REMOTE = 1;
     int SYNC_DUMP_TO_LOCAL = 2;
+    int SYNC_FILES = 3;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * The context
+     */
     Context getContext();
 
     /**
@@ -25,15 +31,9 @@ public interface ISyncManager {
     IEnvironment getLocalEnvironment();
 
     /**
-     * Returns the remote environment from {@link #getRemoteDbFile()}
-     * @see #getRemoteDbFile()
-     */
-    IEnvironment getRemoteEnvironment();
-
-    /**
      * Creates an IEntityHistory
      */
-    IEntityHistory createEntityHistory(IEnvironment environment);
+    IDeleteHistory createDeleteHistory(IEnvironment environment);
 
     /**
      * Returns the Root
@@ -42,9 +42,15 @@ public interface ISyncManager {
 
     /**
      * Returns the remote database file
-     * @see #getRemoteEnvironment()
      */
     RemoteFile getRemoteDbFile();
+
+    /**
+     * Returns the local config
+     */
+    ILocalConfiguration getConfig(String name);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Sync database
@@ -53,8 +59,11 @@ public interface ISyncManager {
     void syncDatabase(int syncType) throws SyncException;
 
     /**
-     * Do clean up and close
+     * Sync directory
+     * @param dir the local directory
+     * @param remoteDir the remote directory
+     * @throws SyncException
      */
-    void close();
+    void syncFiles(File dir, RemoteFile remoteDir) throws SyncException;
 
 }

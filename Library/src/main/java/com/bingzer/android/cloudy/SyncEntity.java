@@ -1,16 +1,16 @@
 package com.bingzer.android.cloudy;
 
 import com.bingzer.android.Randomite;
+import com.bingzer.android.Timespan;
 import com.bingzer.android.cloudy.contracts.ISyncEntity;
 import com.bingzer.android.dbv.BaseEntity;
 import com.bingzer.android.dbv.Delegate;
 import com.bingzer.android.dbv.IEnvironment;
 
-import java.io.File;
-
 public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
 
     protected long syncId = Randomite.uniqueId();
+    protected long lastUpdated = 0;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,11 +25,6 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
     //////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public File[] getLocalFiles(){
-        return null;
-    }
-
-    @Override
     public final long getSyncId() {
         return syncId;
     }
@@ -39,27 +34,36 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
         this.syncId = syncId;
     }
 
+    @Override
+    public final void setLastUpdated(long lastUpdated) {
+        this.lastUpdated = lastUpdated;
+    }
+
+    @Override
+    public final long getLastUpdated() {
+        return lastUpdated;
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     protected void onBeforeInsert() {
-        if(syncId == -1)
-            syncId = Randomite.uniqueId();
+        lastUpdated = Timespan.now();
     }
 
     @Override
-    protected void onAfterInsert() {
-        EntityHistory.insert(this);
+    protected void onBeforeUpdate() {
+        lastUpdated = Timespan.now();
     }
 
     @Override
-    protected void onAfterUpdate() {
-        EntityHistory.update(this);
+    protected void onBeforeDelete() {
+        lastUpdated = Timespan.now();
     }
 
     @Override
     protected void onAfterDelete() {
-        EntityHistory.delete(this);
+        DeleteHistory.delete(this);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -76,14 +80,19 @@ public abstract class SyncEntity extends BaseEntity implements ISyncEntity {
     public void map(Mapper mapper) {
         mapId(mapper);
         mapper.map("SyncId", new Delegate.TypeLong() {
-            @Override
-            public void set(Long aLong) {
+            @Override public void set(Long aLong) {
                 setSyncId(aLong);
             }
-
-            @Override
-            public Long get() {
+            @Override public Long get() {
                 return getSyncId();
+            }
+        });
+        mapper.map("LastUpdated", new Delegate.TypeLong() {
+            @Override public void set(Long aLong) {
+                setLastUpdated(aLong);
+            }
+            @Override public Long get() {
+                return getLastUpdated();
             }
         });
     }

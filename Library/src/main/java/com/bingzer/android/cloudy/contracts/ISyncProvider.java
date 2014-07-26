@@ -3,13 +3,11 @@ package com.bingzer.android.cloudy.contracts;
 import com.bingzer.android.cloudy.SyncException;
 
 public interface ISyncProvider {
-    int UPSTREAM = 1;
-    int DOWNSTREAM = 2;
 
-    //////////////////////////////////////////////////////////////////////////////////////////////
+    String getName();
 
-    long sync(long timestamp) throws SyncException;
+    void sync() throws SyncException;
 
-    void close();
+    void close() throws SyncException;
 
 }
