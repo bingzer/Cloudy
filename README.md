@@ -4,3 +4,11 @@ Cloudy
 ======
 
 Fat Client Syncing (under heavy development)
+Download
+========
+```gradle
+
+    // main component
+    compile 'com.bingzer.android.cloudy:cloudy:1.0.0'
+    
+```
